@@ -27,7 +27,8 @@
   height, weight, gradYear, highSchoolTeam, goal, clubTeam?, currentOffers?,
   highlightTapeUrl?, socials?, gpa?, relocateStates?
 - `events`: athleteId, url, notes, date?, results?, createdAt
-- `videos`: athleteId, drillType, fileUrl, uploadDate, status, feedback?, retries?
+- `videos`: athleteId (username), drillType, fileUrl, uploadDate, status,
+  analysisStatus, analysisNotes?, analysisMetrics?, retries?
 - `reports`: athleteId, type (scout|research|coach), summary, strengths,
   weaknesses, metrics, recommendedLevel, createdAt
 - `savedSearches`: scoutId, query, parsedFilters, createdAt, notifyEmail
@@ -93,12 +94,14 @@
 
 #### `videos`
 
-- athleteId: string
-- drillType: "speed_ladder" | "shuttle_run" | "position_specific"
+- athleteId: string (unique username)
+- drillType: "wall_ball" | "dash_20" | "shuttle_5_10_5"
 - fileUrl: string
 - uploadDate: timestamp
 - status: "uploaded" | "processing" | "ready" | "failed"
-- feedback?: string
+- analysisStatus?: "pending" | "running" | "ready" | "failed"
+- analysisNotes?: string | null
+- analysisMetrics?: Record<string, string | number> (schema set by Gemini agent)
 - retries?: number
 
 #### `reports`

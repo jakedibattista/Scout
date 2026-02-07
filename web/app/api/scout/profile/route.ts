@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export async function POST(request: Request) {
@@ -18,8 +18,20 @@ export async function POST(request: Request) {
       .update(String(password))
       .digest("hex");
 
+    const userRef = doc(db, "users", String(username));
+    const existingUser = await getDoc(userRef);
+    if (existingUser.exists()) {
+      const existingData = existingUser.data();
+      if (existingData?.passwordHash !== passwordHash) {
+        return Response.json(
+          { ok: false, error: "Username is already taken." },
+          { status: 409 }
+        );
+      }
+    }
+
     await setDoc(
-      doc(db, "users", String(username)),
+      userRef,
       {
         username: String(username),
         email: String(profile.email ?? ""),

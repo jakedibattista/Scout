@@ -1,0 +1,17 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://192.168.1.233:3000"
+    ],
+    "method": ["GET", "POST", "PUT", "HEAD"],
+    "responseHeader": [
+      "Content-Type",
+      "x-goog-resumable",
+      "x-goog-meta-*",
+      "x-goog-content-length-range"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

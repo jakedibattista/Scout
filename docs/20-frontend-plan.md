@@ -77,8 +77,8 @@
 
 - Purpose: upload video for analysis
 - Primary actions: upload, skip for now
-- Key elements: combine title uses sport/position, drill cards with how-to
-  buttons, upload input
+- Key elements: drill cards for wall ball, 20-yard dash, 5-10-5 shuttle, upload
+  input
 - UI states: uploading, upload success, upload failure, unsupported file
 
 ### Athlete Scouting Evaluation

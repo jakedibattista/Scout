@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import PageShell from "../../_components/PageShell";
 import { db } from "@/lib/firebase";
 import StateChecklist from "../../_components/StateChecklist";
 
 type ReportStatus = "idle" | "loading" | "ready" | "error";
+type DrillStatus = "idle" | "uploading" | "uploaded" | "error";
 type ReportPayload = {
   summary?: string;
   strengths?: string;
@@ -38,12 +39,35 @@ type AthleteAboutForm = {
   youtube: string;
 };
 
+type VideoItem = {
+  id: string;
+  drillType: string;
+  fileName: string;
+  analysisStatus: string;
+  analysisNotes: string | null;
+  analysisMetrics: Record<string, string | number>;
+  uploadDate: string | null;
+  createdAt?: string | null;
+  viewUrl: string | null;
+};
+
 export default function AthleteReportPage() {
   const [status, setStatus] = useState<ReportStatus>("idle");
   const [report, setReport] = useState<ReportPayload>({});
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"ai" | "about">("ai");
   const [isEditingAbout, setIsEditingAbout] = useState(false);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [drillStatus, setDrillStatus] = useState<Record<string, DrillStatus>>({
+    wall_ball: "idle",
+    dash_20: "idle",
+    shuttle_5_10_5: "idle",
+  });
+  const [drillMessage, setDrillMessage] = useState<Record<string, string>>({
+    wall_ball: "",
+    dash_20: "",
+    shuttle_5_10_5: "",
+  });
   const [aboutForm, setAboutForm] = useState<AthleteAboutForm>({
     name: "Jordan Wells",
     sport: "lacrosse",
@@ -72,6 +96,15 @@ export default function AthleteReportPage() {
     football: ["QB", "RB", "WR", "TE", "OL", "DL", "LB", "CB", "S", "K", "P"],
   };
   const availablePositions = positionOptions[aboutForm.sport] ?? [];
+  const drillLabels: Record<string, string> = {
+    wall_ball: "Wall ball",
+    dash_20: "20-yard dash",
+    shuttle_5_10_5: "5-10-5 shuttle",
+  };
+  const drillKeys = useMemo(
+    () => ["wall_ball", "dash_20", "shuttle_5_10_5"],
+    []
+  );
 
   async function handleGenerate() {
     setStatus("loading");
@@ -147,6 +180,123 @@ export default function AthleteReportPage() {
 
     loadProfile();
   }, []);
+
+  async function loadVideos() {
+    if (typeof window === "undefined") return;
+    const username = localStorage.getItem("athleteUsername");
+    if (!username) return;
+
+    try {
+      const response = await fetch(
+        `/api/athlete/videos?athleteId=${encodeURIComponent(username)}`
+      );
+      const data = await response.json();
+      if (response.ok && data.ok) {
+        setVideos(Array.isArray(data.videos) ? data.videos : []);
+      }
+    } catch (error) {
+      setVideos([]);
+    }
+  }
+
+  useEffect(() => {
+    loadVideos();
+  }, []);
+
+  function resolveContentType(file: File) {
+    if (file.type) return file.type;
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith(".mov")) return "video/quicktime";
+    if (lowerName.endsWith(".mp4")) return "video/mp4";
+    if (lowerName.endsWith(".m4v")) return "video/x-m4v";
+    return "application/octet-stream";
+  }
+
+  async function handleDrillUpload(drillKey: string, file?: File | null) {
+    if (!file) {
+      setDrillStatus((prev) => ({ ...prev, [drillKey]: "error" }));
+      setDrillMessage((prev) => ({
+        ...prev,
+        [drillKey]: "No file selected.",
+      }));
+      return;
+    }
+
+    const contentType = resolveContentType(file);
+    if (!contentType.startsWith("video/")) {
+      setDrillStatus((prev) => ({ ...prev, [drillKey]: "error" }));
+      setDrillMessage((prev) => ({
+        ...prev,
+        [drillKey]: "Unsupported file type.",
+      }));
+      return;
+    }
+
+    setDrillStatus((prev) => ({ ...prev, [drillKey]: "uploading" }));
+    setDrillMessage((prev) => ({ ...prev, [drillKey]: "Uploading..." }));
+
+    try {
+      const athleteId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("athleteUsername")
+          : null;
+
+      const uploadResponse = await fetch("/api/athlete/video/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillType: drillKey,
+          fileName: file.name,
+          contentType,
+          athleteId,
+        }),
+      });
+
+      const uploadData = await uploadResponse.json();
+      if (!uploadResponse.ok || uploadData?.ok === false) {
+        throw new Error(uploadData?.error || "Failed to get upload URL.");
+      }
+
+      const storageResponse = await fetch(uploadData.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": uploadData.contentType || contentType },
+        body: file,
+      });
+
+      if (!storageResponse.ok) {
+        throw new Error("Upload failed.");
+      }
+
+      const completeResponse = await fetch("/api/athlete/video/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillType: drillKey,
+          filePath: uploadData.filePath,
+          fileName: file.name,
+          athleteId,
+        }),
+      });
+
+      if (!completeResponse.ok) {
+        throw new Error("Failed to complete upload.");
+      }
+
+      setDrillStatus((prev) => ({ ...prev, [drillKey]: "uploaded" }));
+      setDrillMessage((prev) => ({
+        ...prev,
+        [drillKey]: "Upload complete.",
+      }));
+      await loadVideos();
+    } catch (error) {
+      setDrillStatus((prev) => ({ ...prev, [drillKey]: "error" }));
+      setDrillMessage((prev) => ({
+        ...prev,
+        [drillKey]:
+          error instanceof Error ? error.message : "Upload failed.",
+      }));
+    }
+  }
 
   function handleAboutChange(event: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
@@ -303,49 +453,68 @@ export default function AthleteReportPage() {
               Review or redo your three drills to refresh your report.
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {[
-                {
-                  name: "Speed ladder",
-                  uploaded: true,
-                  date: "Jan 12, 2026",
-                  feedback: "Quick feet, strong acceleration.",
-                },
-                {
-                  name: "Shuttle run",
-                  uploaded: false,
-                  feedback: "",
-                },
-                {
-                  name: "Position-specific",
-                  uploaded: false,
-                  feedback: "",
-                },
-              ].map((drill) => (
-                <div
-                  key={drill.name}
-                  className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70"
-                >
-                  <div className="flex items-center justify-between text-sm text-white">
-                    <span>{drill.name}</span>
-                    <Link
-                      className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white"
-                      href="/athlete/upload"
-                    >
-                      {drill.uploaded ? "Redo" : "Upload"}
-                    </Link>
+              {drillKeys.map((key) => {
+                const drillVideos = videos.filter(
+                  (video) => video.drillType === key
+                );
+                const latest = drillVideos[0];
+                const uploaded = Boolean(latest);
+                const dateLabel = latest?.uploadDate
+                  ? new Date(latest.uploadDate).toLocaleDateString()
+                  : "";
+
+                return (
+                  <div
+                    key={key}
+                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70"
+                  >
+                    <div className="flex items-center justify-between text-sm text-white">
+                      <span>{drillLabels[key] ?? key}</span>
+                      <label className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white cursor-pointer">
+                        {uploaded ? "Redo" : "Upload"}
+                        <input
+                          className="hidden"
+                          type="file"
+                          accept="video/*,video/quicktime"
+                          onChange={(event) =>
+                            handleDrillUpload(key, event.target.files?.[0])
+                          }
+                        />
+                      </label>
+                    </div>
+                    {drillStatus[key] === "uploading" ? (
+                      <div className="mt-2 text-xs text-white/50">
+                        Uploading...
+                      </div>
+                    ) : drillMessage[key] ? (
+                      <div className="mt-2 text-xs text-white/50">
+                        {drillMessage[key]}
+                      </div>
+                    ) : null}
+                    {uploaded ? (
+                      <div className="mt-2 text-xs text-white/50">
+                        Date: {dateLabel}
+                      </div>
+                    ) : null}
+                    {uploaded && latest?.viewUrl ? (
+                      <div className="mt-3 space-y-2">
+                        <video
+                          className="w-full rounded-xl border border-white/10"
+                          controls
+                          preload="metadata"
+                          src={latest.viewUrl}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="mt-3 text-xs text-white/60">
+                      {uploaded
+                        ? latest?.analysisNotes ||
+                          "AI analysis will appear here after processing."
+                        : "Upload a drill video to generate AI feedback."}
+                    </div>
                   </div>
-                  {drill.uploaded ? (
-                    <div className="mt-2 text-xs text-white/50">
-                      Date: {drill.date}
-                    </div>
-                  ) : null}
-                  {drill.uploaded && drill.feedback ? (
-                    <div className="mt-2 text-xs text-white/50">
-                      AI feedback: {drill.feedback}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

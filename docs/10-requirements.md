@@ -18,8 +18,10 @@
 
 - Role selection entry on home page (scout vs athlete)
 - Basic login with username/password
+- Usernames are unique across the platform (used as athlete IDs).
 - Profile creation for both roles
 - Athlete video upload and management
+- Scout view can access athlete videos by default.
 - AI-based video assessment and feedback for athletes
 - Scout search and filtering (NL input parsed to filters)
 - Sport selection includes lacrosse (active) and hockey/football (coming soon)
