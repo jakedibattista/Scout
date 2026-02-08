@@ -23,9 +23,13 @@
 - Athlete video upload and management
 - Scout view can access athlete videos by default.
 - AI-based video assessment and feedback for athletes
+- Research agent to auto-populate competitions from public sources on profile creation
+- Athlete can manually re-run research to refresh competitions
 - Scout search and filtering (NL input parsed to filters)
+- Scout search shows a letter grade and short rationale per result
 - Sport selection includes lacrosse (active) and hockey/football (coming soon)
 - Athlete goal captured and used in coaching guidance
+- Coaching guidance is direct to athlete and action-oriented
 - High school team captured (required)
 
 ## Non-Functional Requirements
@@ -39,9 +43,9 @@
 ## Data Requirements
 
 - Firestore document storage for users, profiles, reports, and saved searches
-- Store videos in GCS with Firestore metadata (drill, URL, status)
-- Store AI reports (scouting, research, coaching) per athlete
-- Store athlete-submitted event links with notes for competitions/results
+- Store videos in GCS with Firestore metadata (drill, URL, status, analysis)
+- Store AI reports (scouting, coaching) per athlete
+- Store event entries (event name, link, summary) from athlete or research agent
 - Allow athletes to add event links from their profile
 - Store saved scout searches for email alerts (SMTP/Gmail API)
 

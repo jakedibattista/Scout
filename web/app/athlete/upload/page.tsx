@@ -13,7 +13,12 @@ type DrillVideoMeta = {
   analysisMetrics: Record<string, string | number>;
 };
 
-const drills: { key: DrillKey; title: string; label: string }[] = [
+const drills: {
+  key: DrillKey;
+  title: string;
+  label: string;
+  howToUrl?: string;
+}[] = [
   {
     key: "wall_ball",
     title: "Drill 1: Wall ball",
@@ -28,8 +33,13 @@ const drills: { key: DrillKey; title: string; label: string }[] = [
     key: "shuttle_5_10_5",
     title: "Drill 3: 5-10-5 shuttle",
     label: "5-10-5 shuttle",
+    howToUrl: "https://www.youtube.com/watch?v=fZoJVVuqY3U",
   },
 ];
+
+const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
+const dashBenchmarks = { elite: 2.5, good: 2.7 };
+const wallBallBenchmarks = { elite: 80, good: 60 };
 
 export default function AthleteUploadPage() {
   const router = useRouter();
@@ -64,6 +74,68 @@ export default function AthleteUploadPage() {
       analysisMetrics: {},
     },
   });
+
+  function parseSeconds(value: unknown) {
+    if (typeof value === "number") return value;
+    if (typeof value !== "string") return null;
+    const normalized = value.replace(/[^\d.]/g, "");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function formatSeconds(value: number | null) {
+    if (value === null) return "—";
+    return `${value.toFixed(2)}s`;
+  }
+
+  function formatCount(value: number | null) {
+    if (value === null) return "—";
+    return `${Math.round(value)}`;
+  }
+
+  function getShuttleGrade(totalSeconds: number | null) {
+    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+    if (totalSeconds < shuttleBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (totalSeconds <= shuttleBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getDashGrade(totalSeconds: number | null) {
+    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+    if (totalSeconds < dashBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (totalSeconds <= dashBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getWallBallGrade(reps: number | null) {
+    if (reps === null) return { label: "Pending", color: "text-white/50" };
+    if (reps >= wallBallBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (reps >= wallBallBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getMetricValue(
+    metrics: Record<string, string | number> | undefined,
+    keys: string[]
+  ) {
+    if (!metrics) return null;
+    for (const key of keys) {
+      if (metrics[key] !== undefined) return metrics[key];
+    }
+    return null;
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -161,16 +233,81 @@ export default function AthleteUploadPage() {
 
       const completeData = await completeResponse.json();
       setStatus((prev) => ({ ...prev, [drillKey]: "uploaded" }));
-      setMessage((prev) => ({ ...prev, [drillKey]: "Upload complete." }));
+      setMessage((prev) => ({
+        ...prev,
+        [drillKey]: "Upload complete. Running analysis...",
+      }));
       setVideoMeta((prev) => ({
         ...prev,
         [drillKey]: {
           viewUrl: completeData?.viewUrl ?? null,
-          analysisStatus: completeData?.analysisStatus ?? "pending",
+          analysisStatus: "running",
           analysisNotes: completeData?.analysisNotes ?? null,
           analysisMetrics: completeData?.analysisMetrics ?? {},
         },
       }));
+
+      if (completeData?.videoId) {
+        const analyzeResponse = await fetch("/api/athlete/video/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId: completeData.videoId }),
+        });
+        if (!analyzeResponse.ok) {
+          setMessage((prev) => ({
+            ...prev,
+            [drillKey]: "Analysis failed.",
+          }));
+          setVideoMeta((prev) => ({
+            ...prev,
+            [drillKey]: {
+              ...prev[drillKey],
+              analysisStatus: "failed",
+            },
+          }));
+        }
+      }
+
+      let attempts = 0;
+      const maxAttempts = 40;
+      while (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        const username =
+          typeof window !== "undefined"
+            ? localStorage.getItem("athleteUsername")
+            : null;
+        if (!username) break;
+        const response = await fetch(
+          `/api/athlete/videos?athleteId=${encodeURIComponent(
+            username
+          )}&includeUrls=false`
+        );
+        const data = await response.json();
+        const list = Array.isArray(data.videos) ? data.videos : [];
+        const latest = list.find((video: { drillType: string }) => video.drillType === drillKey);
+        if (latest) {
+          setVideoMeta((prev) => ({
+            ...prev,
+            [drillKey]: {
+              viewUrl: latest.viewUrl ?? prev[drillKey].viewUrl,
+              analysisStatus: latest.analysisStatus ?? prev[drillKey].analysisStatus,
+              analysisNotes: latest.analysisNotes ?? prev[drillKey].analysisNotes,
+              analysisMetrics: latest.analysisMetrics ?? prev[drillKey].analysisMetrics,
+            },
+          }));
+          if (latest.analysisStatus === "ready" || latest.analysisStatus === "failed") {
+            setMessage((prev) => ({
+              ...prev,
+              [drillKey]:
+                latest.analysisStatus === "ready"
+                  ? "Analysis complete."
+                  : "Analysis failed.",
+            }));
+            break;
+          }
+        }
+        attempts += 1;
+      }
     } catch (error) {
       setStatus((prev) => ({ ...prev, [drillKey]: "error" }));
       setMessage((prev) => ({
@@ -187,18 +324,93 @@ export default function AthleteUploadPage() {
       subtitle="Record a video for each drill and upload it to complete your profile."
     >
       <div className="grid gap-6 md:grid-cols-3">
-        {drills.map((drill) => (
-          <div
-            key={drill.key}
-            className="rounded-3xl border border-white/10 bg-white/5 p-6"
-          >
-            <h2 className="font-display text-lg">{drill.title}</h2>
-            <button
-              className="mt-3 inline-flex items-center gap-2 rounded-full border border-yellow-300/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-yellow-300 hover:border-yellow-300 hover:text-yellow-200"
-              type="button"
+        {drills.map((drill) => {
+          const metrics = videoMeta[drill.key]?.analysisMetrics;
+          const analysisStatus = videoMeta[drill.key]?.analysisStatus;
+          const shuttleValue =
+            drill.key === "shuttle_5_10_5"
+              ? parseSeconds(
+                  getMetricValue(metrics, [
+                    "Total Time",
+                    "Finish Time",
+                    "total_time",
+                    "totalTime",
+                    "total_time_seconds",
+                    "timeSeconds",
+                    "time",
+                  ])
+                )
+              : null;
+          const dashValue =
+            drill.key === "dash_20"
+              ? parseSeconds(
+                  getMetricValue(metrics, [
+                    "Total Time",
+                    "Finish Time",
+                    "20_yard_total_time",
+                    "total_time",
+                    "totalTime",
+                    "total_time_seconds",
+                    "timeSeconds",
+                    "time",
+                  ])
+                )
+              : null;
+          const wallBallValue =
+            drill.key === "wall_ball"
+              ? parseSeconds(
+                  getMetricValue(metrics, [
+                    "repetitions",
+                    "Repetitions",
+                    "reps",
+                    "rep_count",
+                    "total_reps",
+                    "count",
+                  ])
+                )
+              : null;
+          const shuttleGrade =
+            drill.key === "shuttle_5_10_5"
+              ? analysisStatus === "ready" && shuttleValue === null
+                ? { label: "Unavailable", color: "text-white/40" }
+                : getShuttleGrade(shuttleValue)
+              : null;
+          const dashGrade =
+            drill.key === "dash_20"
+              ? analysisStatus === "ready" && dashValue === null
+                ? { label: "Unavailable", color: "text-white/40" }
+                : getDashGrade(dashValue)
+              : null;
+          const wallBallGrade =
+            drill.key === "wall_ball"
+              ? analysisStatus === "ready" && wallBallValue === null
+                ? { label: "Unavailable", color: "text-white/40" }
+                : getWallBallGrade(wallBallValue)
+              : null;
+
+          return (
+            <div
+              key={drill.key}
+              className="rounded-3xl border border-white/10 bg-white/5 p-6"
             >
-              How to do the {drill.label} drill
-            </button>
+            <h2 className="font-display text-lg">{drill.title}</h2>
+            {drill.howToUrl ? (
+              <a
+                className="mt-3 inline-flex items-center gap-2 rounded-full border border-yellow-300/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-yellow-300 hover:border-yellow-300 hover:text-yellow-200"
+                href={drill.howToUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                How to do the {drill.label} drill
+              </a>
+            ) : (
+              <button
+                className="mt-3 inline-flex items-center gap-2 rounded-full border border-yellow-300/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-yellow-300 hover:border-yellow-300 hover:text-yellow-200"
+                type="button"
+              >
+                How to do the {drill.label} drill
+              </button>
+            )}
             <div className="mt-6 flex flex-col gap-3">
               <input
                 className="rounded-2xl border border-dashed border-white/30 px-4 py-3 text-xs text-white/70"
@@ -219,17 +431,78 @@ export default function AthleteUploadPage() {
               </p>
             )}
             {status[drill.key] === "uploaded" ? (
+              <div className="mt-3 flex items-center gap-3 text-xs">
+                {drill.key === "wall_ball" ? (
+                  <>
+                    <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                      Reps (60s): {formatCount(wallBallValue)}
+                    </div>
+                    <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                      Max streak:{" "}
+                      {formatCount(
+                        parseSeconds(
+                          getMetricValue(metrics, [
+                            "max_consecutive_reps",
+                            "maxConsecutiveReps",
+                            "max_streak",
+                            "maxStreak",
+                          ])
+                        )
+                      )}
+                    </div>
+                    <div
+                      className={`rounded-full border border-white/10 px-3 py-1 ${
+                        wallBallGrade?.color ?? "text-white/50"
+                      }`}
+                    >
+                      {wallBallGrade?.label ?? "Pending"}
+                    </div>
+                  </>
+                ) : null}
+                {drill.key === "dash_20" ? (
+                  <>
+                    <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                      Speed: {formatSeconds(dashValue)}
+                    </div>
+                    <div
+                      className={`rounded-full border border-white/10 px-3 py-1 ${
+                        dashGrade?.color ?? "text-white/50"
+                      }`}
+                    >
+                      {dashGrade?.label ?? "Pending"}
+                    </div>
+                  </>
+                ) : null}
+                {drill.key === "shuttle_5_10_5" ? (
+                  <>
+                    <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                      Speed: {formatSeconds(shuttleValue)}
+                    </div>
+                    <div
+                      className={`rounded-full border border-white/10 px-3 py-1 ${
+                        shuttleGrade?.color ?? "text-white/50"
+                      }`}
+                    >
+                      {shuttleGrade?.label ?? "Pending"}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {status[drill.key] === "uploaded" ? (
               <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/70">
                 <div className="text-xs uppercase tracking-wider text-white/50">
                   Video preview
                 </div>
                 {videoMeta[drill.key]?.viewUrl ? (
-                  <video
-                    className="w-full rounded-xl border border-white/10"
-                    controls
-                    preload="metadata"
-                    src={videoMeta[drill.key].viewUrl ?? undefined}
-                  />
+                  <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                    <video
+                      className="h-full w-full object-cover"
+                      controls
+                      preload="metadata"
+                      src={videoMeta[drill.key].viewUrl ?? undefined}
+                    />
+                  </div>
                 ) : (
                   <p className="text-white/50">Preview pending.</p>
                 )}
@@ -244,7 +517,8 @@ export default function AthleteUploadPage() {
               </div>
             ) : null}
           </div>
-        ))}
+        );
+      })}
       </div>
       <div className="mt-6">
         <button

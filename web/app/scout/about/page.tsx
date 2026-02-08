@@ -14,7 +14,7 @@ type ScoutProfileForm = {
   sport: string;
   level: string;
   recruitingStates: string[];
-  minAge: string;
+  gradYearsRecruiting: number[];
   positionFocus: string[];
 };
 
@@ -27,7 +27,7 @@ export default function ScoutAboutPage() {
     sport: "Lacrosse",
     level: "D1",
     recruitingStates: ["MD", "VA", "PA"],
-    minAge: "16",
+    gradYearsRecruiting: [2026, 2027],
     positionFocus: ["Defender", "Midfield"],
   });
   const [message, setMessage] = useState("");
@@ -53,6 +53,7 @@ export default function ScoutAboutPage() {
   const [pendingPosition, setPendingPosition] = useState(
     availablePositions[0] ?? ""
   );
+  const [pendingGradYear, setPendingGradYear] = useState(2026);
 
   useEffect(() => {
     async function loadProfile() {
@@ -74,7 +75,9 @@ export default function ScoutAboutPage() {
         recruitingStates: Array.isArray(profile.recruitingStates)
           ? profile.recruitingStates
           : [],
-        minAge: String(profile.minAge ?? ""),
+        gradYearsRecruiting: Array.isArray(profile.gradYearsRecruiting)
+          ? profile.gradYearsRecruiting
+          : [],
         positionFocus: Array.isArray(profile.positionFocus)
           ? profile.positionFocus
           : [],
@@ -87,11 +90,18 @@ export default function ScoutAboutPage() {
 
   async function handleSave() {
     try {
-      await fetch("/api/scout/profile", {
+      const username =
+        typeof window !== "undefined"
+          ? localStorage.getItem("scoutUsername")
+          : null;
+      const response = await fetch("/api/scout/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, username }),
       });
+      if (!response.ok) {
+        throw new Error("Failed to save profile.");
+      }
       setIsEditing(false);
       setMessage("Demographics updated.");
     } catch (error) {
@@ -237,7 +247,11 @@ export default function ScoutAboutPage() {
                 ))}
               </select>
             ) : (
-              <div>{form.sport}</div>
+              <div>
+                {form.sport
+                  ? form.sport.charAt(0).toUpperCase() + form.sport.slice(1)
+                  : ""}
+              </div>
             )}
           </div>
           <div>
@@ -270,7 +284,7 @@ export default function ScoutAboutPage() {
               <div className="mt-2">
                 <StateChecklist
                   name="recruitingStates"
-                  label="Recruiting states"
+                  label=""
                   value={form.recruitingStates}
                   onChange={(next) =>
                     setForm((prev) => ({ ...prev, recruitingStates: next }))
@@ -278,22 +292,90 @@ export default function ScoutAboutPage() {
                 />
               </div>
             ) : (
-              <div>{form.recruitingStates.join(", ")}</div>
+              <div>
+                {form.recruitingStates.length
+                  ? form.recruitingStates.join(", ")
+                  : "None selected"}
+              </div>
             )}
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-white/50">
-              Minimum Age
+              Graduation Years Recruiting
             </div>
             {isEditing ? (
-              <input
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
-                name="minAge"
-                value={form.minAge}
-                onChange={handleChange}
-              />
+              <div className="mt-2 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                    value={pendingGradYear}
+                    onChange={(event) =>
+                      setPendingGradYear(Number(event.target.value))
+                    }
+                  >
+                    {Array.from({ length: 10 }, (_, idx) => 2026 + idx).map(
+                      (year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      )
+                    )}
+                  </select>
+                  <button
+                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                    type="button"
+                    onClick={() => {
+                      if (form.gradYearsRecruiting.includes(pendingGradYear))
+                        return;
+                      setForm((prev) => ({
+                        ...prev,
+                        gradYearsRecruiting: [
+                          ...prev.gradYearsRecruiting,
+                          pendingGradYear,
+                        ],
+                      }));
+                    }}
+                  >
+                    Add year
+                  </button>
+                </div>
+                {form.gradYearsRecruiting.length ? (
+                  <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                    {form.gradYearsRecruiting.map((year) => (
+                      <div
+                        key={year}
+                        className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                      >
+                        <span>{year}</span>
+                        <button
+                          className="text-white/50 hover:text-white"
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              gradYearsRecruiting: prev.gradYearsRecruiting.filter(
+                                (item) => item !== year
+                              ),
+                            }))
+                          }
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/50">
+                    No years selected yet.
+                  </p>
+                )}
+              </div>
             ) : (
-              <div>{form.minAge}</div>
+              <div>
+                {form.gradYearsRecruiting.length
+                  ? form.gradYearsRecruiting.join(", ")
+                  : "None selected"}
+              </div>
             )}
           </div>
           <div>
@@ -361,7 +443,11 @@ export default function ScoutAboutPage() {
                 )}
               </div>
             ) : (
-              <div>{form.positionFocus.join(", ")}</div>
+              <div>
+                {form.positionFocus.length
+                  ? form.positionFocus.join(", ")
+                  : "None selected"}
+              </div>
             )}
           </div>
         </div>

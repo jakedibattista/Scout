@@ -4,8 +4,8 @@
 
 - Next.js app with API routes (or a small Node service on Cloud Run)
 - Gemini API for analysis and report generation
-- Google Cloud Storage for video uploads
-- Firestore for document storage (profiles, reports, searches)
+- Google Cloud Storage for video uploads (signed URLs)
+- Firestore for document storage (profiles, videos, reports, searches)
 
 ## Services and Responsibilities
 
@@ -22,21 +22,20 @@
 
 - `users`: id, role, email, username, passwordHash, createdAt
 - `scoutProfiles`: userId, username, name, email, sport, program, level,
-  recruitingStates?, minAge?, positionFocus?
+  recruitingStates?, gradYearsRecruiting?, positionFocus?
 - `athleteProfiles`: userId, username, name, email, state, sport, position,
   height, weight, gradYear, highSchoolTeam, goal, clubTeam?, currentOffers?,
   highlightTapeUrl?, socials?, gpa?, relocateStates?
-- `events`: athleteId, url, notes, date?, results?, createdAt
+- `events`: athleteId, eventName, url, summary, createdAt, updatedAt
 - `videos`: athleteId (username), drillType, fileUrl, uploadDate, status,
   analysisStatus, analysisNotes?, analysisMetrics?, retries?
-- `reports`: athleteId, type (scout|research|coach), summary, strengths,
-  weaknesses, metrics, recommendedLevel, createdAt
+- `reports`: athleteId, type (scout|coach), summary, strengths, weaknesses,
+  metrics, recommendedLevel, createdAt
 - `savedSearches`: scoutId, query, parsedFilters, createdAt, notifyEmail
 
 ### Implementation Status (MVP)
 
-- Live in Firestore: `users`, `scoutProfiles`, `athleteProfiles`, `events`
-- Pending: `videos`, `reports`, `savedSearches` persistence and workflows
+- Live in Firestore: `users`, `scoutProfiles`, `athleteProfiles`, `events`, `videos`, `reports`, `savedSearches`
 
 ### Field-Level Schema (MVP)
 
@@ -59,7 +58,7 @@
 - program: string
 - level: "D1" | "D2" | "D3" | "JUCO" | "Club"
 - recruitingStates?: string[]
-- minAge?: number
+- gradYearsRecruiting?: number[]
 - positionFocus?: string[]
 
 #### `athleteProfiles`
@@ -86,11 +85,11 @@
 #### `events`
 
 - athleteId: string
+- eventName: string
 - url: string
-- notes: string
-- date?: string
-- results?: string
+- summary: string
 - createdAt: timestamp
+- updatedAt: timestamp
 
 #### `videos`
 
@@ -102,12 +101,14 @@
 - analysisStatus?: "pending" | "running" | "ready" | "failed"
 - analysisNotes?: string | null
 - analysisMetrics?: Record<string, string | number> (schema set by Gemini agent)
+ - analysisUpdatedAt?: timestamp
+- analysisError?: string | null
 - retries?: number
 
 #### `reports`
 
 - athleteId: string
-- type: "scout" | "research" | "coach"
+- type: "scout" | "coach"
 - summary: string
 - strengths: string[]
 - weaknesses: string[]
@@ -126,7 +127,7 @@
 
 ## API Design
 
-- Endpoints: profile CRUD, video upload URL, report generation, scout search
+- Endpoints: profile CRUD, video upload URL, drill analysis, report generation, scout search
 - Auth model: basic username/password login (MVP)
 - Rate limits: basic per-user limits if needed
 
@@ -136,10 +137,11 @@
 - `POST /api/scout/profile`: create/update scout profile
 - `POST /api/athlete/profile`: create/update athlete profile
 - `POST /api/athlete/events`: add athlete-submitted event link
+- `PATCH /api/athlete/events`: edit athlete event entries
 - `POST /api/athlete/video/upload-url`: get signed GCS upload URL
 - `POST /api/athlete/video/complete`: mark upload complete + kick off report
-- `POST /api/reports/generate`: generate scouting/research/coach reports (goal
-  influences coaching only, not alerts)
+- `POST /api/athlete/video/analyze`: run drill analysis via Gemini
+- `POST /api/reports/refresh`: regenerate scouting + coaching reports
 - `POST /api/scout/search`: NL search → parsed filters → results
 - `POST /api/scout/search/save`: save search for alerts
 - `GET /api/scout/athlete/:id`: athlete profile + videos + reports
@@ -154,8 +156,11 @@
 1. Athlete completes profile → `athleteProfiles` document created.
 2. Athlete requests upload URL → signed GCS URL returned.
 3. Upload completes → `videos` document created (status: uploaded).
-4. Report generation starts → Gemini agents run → `reports` stored.
-5. Scout runs NL search → parsed filters → matching athlete profiles.
+4. Drill analysis starts → Gemini drill agent runs → `analysisNotes/metrics` stored.
+5. Report generation starts → Gemini report agent runs → `reports` stored.
+6. Research agent adds events on profile creation → `events` updated.
+7. Athlete can add/edit events → `events` updated.
+8. Scout runs NL search → parsed filters → matching athlete profiles.
 
 ## Storage
 
@@ -169,7 +174,18 @@
 
 ## Integrations
 
-- Gemini API (latest models)
+- Gemini API via task-specific agents:
+  - Combine drill agent (video analysis for wall ball, 20-yard dash, 5-10-5)
+  - Athlete research agent (Gemini Google Search tool → event entries)
+  - Scouting/coaching agent (scouting report + coaching guidance)
+  - Scout query agent (NL search → structured filters)
+  - All agents share one Gemini client with role-specific prompts
+
+## Google Cloud Usage
+
+- Storage: GCS bucket for uploaded videos; signed URLs for upload/view
+- Firestore: source of truth for profiles, videos, analysis, reports
+- Gemini: analysis results stored in Firestore, not in Storage metadata
 
 ## Observability
 

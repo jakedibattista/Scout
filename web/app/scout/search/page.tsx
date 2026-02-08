@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PageShell from "../../_components/PageShell";
 
 type SearchResult = {
@@ -16,35 +16,39 @@ export default function ScoutSearchPage() {
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [message, setMessage] = useState("");
+  const [planJson, setPlanJson] = useState("");
   const [notifyEnabled, setNotifyEnabled] = useState(false);
   const [lastQuery, setLastQuery] = useState("");
-  const [savedSearches, setSavedSearches] = useState<string[]>([
-    "Fastest defender in Maryland",
-    "DH with 3.0 GPA",
-  ]);
+  const [savedSearches, setSavedSearches] = useState<string[]>([]);
 
   async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("searching");
     setMessage("");
+    setPlanJson("");
 
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries());
     const query = String(payload.query ?? "").trim();
     setLastQuery(query);
     setNotifyEnabled(false);
+    const scoutUsername =
+      typeof window !== "undefined"
+        ? localStorage.getItem("scoutUsername")
+        : null;
 
     try {
       const response = await fetch("/api/scout/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, scoutUsername }),
       });
-      if (!response.ok) {
-        throw new Error("Search failed.");
-      }
       const data = await response.json();
+      if (!response.ok || data?.ok === false) {
+        throw new Error(data?.error || "Search failed.");
+      }
       setResults(data.results ?? []);
+      setPlanJson(data.plan ? JSON.stringify(data.plan, null, 2) : "");
       setStatus("done");
       setMessage(
         data.results?.length ? "Matches found." : "No matches yet."
@@ -60,11 +64,22 @@ export default function ScoutSearchPage() {
       return;
     }
     try {
-      await fetch("/api/scout/search/save", {
+      const scoutUsername =
+        typeof window !== "undefined"
+          ? localStorage.getItem("scoutUsername")
+          : null;
+      const response = await fetch("/api/scout/search/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: lastQuery, notifyEmail: true }),
+        body: JSON.stringify({
+          query: lastQuery,
+          notifyEmail: true,
+          scoutUsername,
+        }),
       });
+      if (!response.ok) {
+        throw new Error("Unable to save search.");
+      }
     } catch (error) {
       // Non-blocking for MVP
     }
@@ -80,6 +95,32 @@ export default function ScoutSearchPage() {
       setNotifyEnabled(false);
     }
   }
+
+  async function loadSavedSearches() {
+    const scoutUsername =
+      typeof window !== "undefined"
+        ? localStorage.getItem("scoutUsername")
+        : null;
+    if (!scoutUsername) return;
+
+    try {
+      const response = await fetch(
+        `/api/scout/search/list?scoutUsername=${encodeURIComponent(
+          scoutUsername
+        )}`
+      );
+      const data = await response.json();
+      if (response.ok && data.ok) {
+        setSavedSearches(Array.isArray(data.searches) ? data.searches : []);
+      }
+    } catch (error) {
+      // Non-blocking for MVP
+    }
+  }
+
+  useEffect(() => {
+    loadSavedSearches();
+  }, []);
 
   return (
     <PageShell
@@ -132,6 +173,16 @@ export default function ScoutSearchPage() {
           {status === "error" && message ? (
             <p className="text-sm text-red-300">{message}</p>
           ) : null}
+      {status === "done" && planJson ? (
+        <details className="mt-4 text-xs text-white/60">
+          <summary className="cursor-pointer uppercase tracking-wider text-white/50">
+            View query plan
+          </summary>
+          <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/40 p-4 text-white/70">
+            {planJson}
+          </pre>
+        </details>
+      ) : null}
           {status === "done" && lastQuery ? (
             <button
               className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white"
@@ -160,23 +211,33 @@ export default function ScoutSearchPage() {
                 className="grid grid-cols-3 gap-4 px-6 py-4 text-sm"
               >
                 <span className="text-white">{athlete.name}</span>
-                <span className="text-white/70">{athlete.grade}</span>
-                <div className="flex flex-wrap gap-3 text-xs uppercase tracking-wider">
+                <div className="flex flex-col gap-1">
+                  <span className="text-white/70">{athlete.grade}</span>
+                  <span className="text-xs text-white/50">
+                    {athlete.reason}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs uppercase tracking-wider">
                   <Link
                     className="text-yellow-300 hover:text-yellow-200"
-                    href={`/scout/athlete/${athlete.id}`}
+                    href={`/scout/athlete/${encodeURIComponent(athlete.id)}`}
                   >
                     View Profile
                   </Link>
+                  <span className="text-white/30">/</span>
                   <button
-                    className="text-white/70 hover:text-white"
+                    className="text-yellow-300 hover:text-yellow-200"
                     type="button"
                   >
-                    Contact
+                    CONTACT
                   </button>
                 </div>
               </div>
             ))
+          ) : status === "done" ? (
+            <div className="px-6 py-6 text-sm text-white/60">
+              No matches found with the current filters.
+            </div>
           ) : (
             <div className="px-6 py-6 text-sm text-white/60">
               Results will appear here after you search.

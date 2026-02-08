@@ -11,7 +11,7 @@ athletes they might otherwise miss.
 ## Goals
 
 - Use latest Gemini models to generate scouting reports, analyze video, and
-  research athletes/coaches efficiently.
+  research athletes efficiently.
 - Make scouting and recruiting easy and fair for athletes; reduce scout effort
   to find and evaluate players.
 - Deliver a beautiful, modern 2026-style MVP with 1-2 polished workflows.
@@ -46,6 +46,11 @@ athletes they might otherwise miss.
 
 - MVP is lacrosse-first with sport picker (hockey/football marked "coming soon")
 - Basic username/password auth is sufficient for MVP
+- Gemini usage is organized into task-specific agents (drill analysis, research,
+  coaching/scouting, scout query parsing).
+- Coaching guidance is second-person and action-oriented (athlete-facing).
+- Scout reports are conservative and avoid inflated praise.
+- Athlete research uses the Gemini Google Search tool with manual re-run.
 
 ## Stakeholders
 

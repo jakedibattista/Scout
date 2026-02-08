@@ -55,7 +55,7 @@ short and specific. If you are unsure, write "TBD" and we will revisit.
 ### ScoutProfile
 
 - Required: name, email, sport, school/program, program level (D1/D2/D3/etc)
-- Optional: recruiting states (dropdown + list), minimum age, positions recruiting
+- Optional: recruiting states (dropdown + list), graduation years recruiting, positions recruiting
   (dropdown + list)
 
 ### AthleteProfile

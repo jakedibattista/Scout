@@ -14,6 +14,7 @@ type VideoItem = {
   analysisNotes: string | null;
   analysisMetrics: Record<string, string | number>;
   uploadDate: string | null;
+  createdAt?: string | null;
   viewUrl: string | null;
 };
 
@@ -25,6 +26,15 @@ type AthleteResponse = {
     email: string;
     state: string;
   };
+  reports?: Array<{
+    id: string;
+    type: string;
+    summary: string;
+    strengths?: string[];
+    weaknesses?: string[];
+    recommendedLevel?: string;
+    createdAt?: string | null;
+  }>;
   videos?: VideoItem[];
   error?: string;
 };
@@ -34,6 +44,10 @@ const drillLabels: Record<string, string> = {
   dash_20: "20-yard dash",
   shuttle_5_10_5: "5-10-5 shuttle",
 };
+
+const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
+const dashBenchmarks = { elite: 2.5, good: 2.7 };
+const wallBallBenchmarks = { elite: 80, good: 60 };
 
 export default function AthleteDetailPage() {
   const params = useParams();
@@ -49,6 +63,9 @@ export default function AthleteDetailPage() {
     null
   );
   const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [scoutReport, setScoutReport] = useState<
+    AthleteResponse["reports"][number] | null
+  >(null);
 
   useEffect(() => {
     if (!athleteId) return;
@@ -65,6 +82,13 @@ export default function AthleteDetailPage() {
         if (!active) return;
         setAthlete(data.athlete ?? null);
         setVideos(data.videos ?? []);
+        const reports = Array.isArray(data.reports) ? data.reports : [];
+        const scout = reports
+          .filter((item) => item.type === "scout")
+          .sort((a, b) =>
+            String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))
+          )[0];
+        setScoutReport(scout ?? null);
       })
       .catch((err) => {
         if (!active) return;
@@ -81,6 +105,78 @@ export default function AthleteDetailPage() {
   }, [athleteId]);
 
   const athleteName = athlete?.name ?? decodeURIComponent(athleteId);
+  const drillKeys = ["wall_ball", "dash_20", "shuttle_5_10_5"] as const;
+
+  function parseSeconds(value?: string | number | null) {
+    if (typeof value === "number") return value;
+    if (!value) return null;
+    const normalized = String(value).replace(/[^0-9.]/g, "");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function formatSeconds(value: number | null) {
+    if (value === null) return "—";
+    return `${value.toFixed(2)}s`;
+  }
+
+  function formatCount(value: number | null) {
+    if (value === null) return "—";
+    return `${Math.round(value)}`;
+  }
+
+  function getMetricValue(
+    metrics: Record<string, string | number> | undefined,
+    keys: string[]
+  ) {
+    if (!metrics) return null;
+    for (const key of keys) {
+      if (metrics[key] !== undefined) return metrics[key];
+    }
+    return null;
+  }
+
+  function getShuttleGrade(totalSeconds: number | null) {
+    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+    if (totalSeconds < shuttleBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (totalSeconds <= shuttleBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getDashGrade(totalSeconds: number | null) {
+    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+    if (totalSeconds < dashBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (totalSeconds <= dashBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getWallBallGrade(reps: number | null) {
+    if (reps === null) return { label: "Pending", color: "text-white/50" };
+    if (reps >= wallBallBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (reps >= wallBallBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getLatestByDrill(drillType: string) {
+    const list = videos.filter((video) => video.drillType === drillType);
+    return list.sort((a, b) => {
+      const aDate = a.uploadDate || a.createdAt || "";
+      const bDate = b.uploadDate || b.createdAt || "";
+      return bDate.localeCompare(aDate);
+    })[0];
+  }
 
   return (
     <PageShell
@@ -106,8 +202,20 @@ export default function AthleteDetailPage() {
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="font-display text-xl">Scouting report</h2>
           <p className="mt-3 text-sm text-white/70">
-            AI summary, top traits, and recommended level will appear here.
+            {scoutReport?.summary ??
+              "Enter competitions and combine drills to get your scouting report."}
           </p>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
+              Strengths:{" "}
+              {Array.isArray(scoutReport?.strengths)
+                ? scoutReport?.strengths.join(", ")
+                : "Speed, quick decision-making"}
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
+              Recommended level: {scoutReport?.recommendedLevel ?? "D1-ready"}
+            </div>
+          </div>
         </div>
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <h2 className="font-display text-xl">Videos</h2>
@@ -120,58 +228,154 @@ export default function AthleteDetailPage() {
               No videos uploaded yet.
             </p>
           ) : (
-            <div className="mt-4 space-y-4 text-sm text-white/70">
-              {videos.map((video) => {
-                const label =
-                  drillLabels[video.drillType] ?? video.drillType;
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {drillKeys.map((key) => {
+                const latest = getLatestByDrill(key);
+                const label = drillLabels[key] ?? key;
+                const totalTimeValue =
+                  key === "shuttle_5_10_5"
+                    ? parseSeconds(
+                        getMetricValue(latest?.analysisMetrics, [
+                          "Total Time",
+                          "Finish Time",
+                          "total_time",
+                          "total_time_seconds",
+                          "totalTime",
+                          "timeSeconds",
+                          "time",
+                        ])
+                      )
+                    : key === "dash_20"
+                      ? parseSeconds(
+                          getMetricValue(latest?.analysisMetrics, [
+                            "Total Time",
+                            "Finish Time",
+                            "20_yard_total_time",
+                            "total_time",
+                            "total_time_seconds",
+                            "totalTime",
+                            "timeSeconds",
+                            "time",
+                          ])
+                        )
+                      : null;
+                const repsValue =
+                  key === "wall_ball"
+                    ? parseSeconds(
+                        getMetricValue(latest?.analysisMetrics, [
+                          "repetitions",
+                          "Repetitions",
+                          "reps",
+                          "total_reps_60s",
+                          "total_reps",
+                          "rep_count",
+                          "count",
+                        ])
+                      )
+                    : null;
+                const maxStreak =
+                  key === "wall_ball"
+                    ? parseSeconds(
+                        getMetricValue(latest?.analysisMetrics, [
+                          "max_consecutive_reps",
+                          "maxConsecutiveReps",
+                          "max_streak",
+                          "maxStreak",
+                        ])
+                      )
+                    : null;
+                const shuttleGrade =
+                  key === "shuttle_5_10_5"
+                    ? latest?.analysisStatus === "ready" && totalTimeValue === null
+                      ? { label: "Unavailable", color: "text-white/40" }
+                      : getShuttleGrade(totalTimeValue)
+                    : null;
+                const dashGrade =
+                  key === "dash_20"
+                    ? latest?.analysisStatus === "ready" && totalTimeValue === null
+                      ? { label: "Unavailable", color: "text-white/40" }
+                      : getDashGrade(totalTimeValue)
+                    : null;
+                const wallBallGrade =
+                  key === "wall_ball"
+                    ? latest?.analysisStatus === "ready" && repsValue === null
+                      ? { label: "Unavailable", color: "text-white/40" }
+                      : getWallBallGrade(repsValue)
+                    : null;
+
                 return (
                   <div
-                    key={video.id}
-                    className="rounded-2xl border border-white/10 bg-black/40 p-4"
+                    key={key}
+                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-white">
+                    <div className="flex items-center justify-between text-sm text-white">
                       <span>{label}</span>
-                      <span className="text-xs text-yellow-300">
-                        Status: {video.analysisStatus}
-                      </span>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/50">
-                      {video.viewUrl ? (
-                        <a
-                          className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white"
-                          href={video.viewUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                    {key === "shuttle_5_10_5" ? (
+                      <div className="mt-3 flex items-center gap-3 text-xs">
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Speed: {formatSeconds(totalTimeValue)}
+                        </div>
+                        <div
+                          className={`rounded-full border border-white/10 px-3 py-1 ${shuttleGrade?.color ?? "text-white/50"}`}
                         >
-                          View video
-                        </a>
-                      ) : (
-                        <span className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/50">
-                          View video (pending)
-                        </span>
-                      )}
-                      <span>File: {video.fileName || "video.mp4"}</span>
-                      {video.uploadDate ? (
-                        <span>
-                          Uploaded:{" "}
-                          {new Date(video.uploadDate).toLocaleDateString()}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-3 text-xs text-white/60">
-                      {video.analysisNotes
-                        ? `Notes: ${video.analysisNotes}`
-                        : "Notes: pending Gemini analysis."}
-                    </div>
-                    {video.analysisMetrics &&
-                    Object.keys(video.analysisMetrics).length ? (
-                      <div className="mt-2 text-xs text-white/50">
-                        Metrics:{" "}
-                        {Object.entries(video.analysisMetrics)
-                          .map(([key, value]) => `${key}: ${value}`)
-                          .join(" · ")}
+                          {shuttleGrade?.label ?? "Pending"}
+                        </div>
                       </div>
                     ) : null}
+                    {key === "dash_20" ? (
+                      <div className="mt-3 flex items-center gap-3 text-xs">
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Speed: {formatSeconds(totalTimeValue)}
+                        </div>
+                        <div
+                          className={`rounded-full border border-white/10 px-3 py-1 ${dashGrade?.color ?? "text-white/50"}`}
+                        >
+                          {dashGrade?.label ?? "Pending"}
+                        </div>
+                      </div>
+                    ) : null}
+                    {key === "wall_ball" ? (
+                      <div className="mt-3 flex items-center gap-3 text-xs">
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Reps (60s): {formatCount(repsValue)}
+                        </div>
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Max streak: {formatCount(maxStreak)}
+                        </div>
+                        <div
+                          className={`rounded-full border border-white/10 px-3 py-1 ${wallBallGrade?.color ?? "text-white/50"}`}
+                        >
+                          {wallBallGrade?.label ?? "Pending"}
+                        </div>
+                      </div>
+                    ) : null}
+                    {latest?.uploadDate ? (
+                      <div className="mt-2 text-xs text-white/50">
+                        Date: {new Date(latest.uploadDate).toLocaleDateString()}
+                      </div>
+                    ) : null}
+                    {latest?.viewUrl ? (
+                      <div className="mt-3">
+                        <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                          <video
+                            className="h-full w-full object-cover"
+                            controls
+                            preload="metadata"
+                            src={latest.viewUrl}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 text-xs text-white/50">
+                        No video uploaded yet.
+                      </div>
+                    )}
+                    <div className="mt-3 text-xs text-white/60">
+                      {latest?.analysisNotes
+                        ? latest.analysisNotes
+                        : "AI analysis will appear here after processing."}
+                    </div>
                   </div>
                 );
               })}

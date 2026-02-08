@@ -1,7 +1,7 @@
 import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
 
 type RouteContext = {
-  params: { id: string };
+  params: Promise<{ id: string }> | { id: string };
 };
 
 export const runtime = "nodejs";
@@ -14,7 +14,11 @@ function toPlainDate(value?: string) {
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const athleteId = context.params.id;
+  const resolvedParams =
+    typeof (context.params as Promise<{ id: string }>).then === "function"
+      ? await (context.params as Promise<{ id: string }>)
+      : (context.params as { id: string });
+  const athleteId = decodeURIComponent(resolvedParams.id);
 
   try {
     const profileRef = adminDb.collection("athleteProfiles").doc(athleteId);
@@ -29,6 +33,10 @@ export async function GET(request: Request, context: RouteContext) {
     const profile = profileSnap.data() ?? {};
     const videosSnapshot = await adminDb
       .collection("videos")
+      .where("athleteId", "==", athleteId)
+      .get();
+    const reportsSnapshot = await adminDb
+      .collection("reports")
       .where("athleteId", "==", athleteId)
       .get();
 
@@ -50,6 +58,10 @@ export async function GET(request: Request, context: RouteContext) {
           typeof data.uploadDate?.toDate === "function"
             ? data.uploadDate.toDate().toISOString()
             : toPlainDate(data.uploadDate);
+        const createdAt =
+          typeof data.createdAt?.toDate === "function"
+            ? data.createdAt.toDate().toISOString()
+            : toPlainDate(data.createdAt);
 
         return {
           id: doc.id,
@@ -60,10 +72,26 @@ export async function GET(request: Request, context: RouteContext) {
           analysisNotes: data.analysisNotes ?? null,
           analysisMetrics: data.analysisMetrics ?? {},
           uploadDate,
+          createdAt,
           viewUrl,
         };
       })
     );
+    const reports = reportsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        type: data.type ?? "",
+        summary: data.summary ?? "",
+        strengths: data.strengths ?? [],
+        weaknesses: data.weaknesses ?? [],
+        recommendedLevel: data.recommendedLevel ?? data.metrics?.recommendedLevel,
+        createdAt:
+          typeof data.createdAt?.toDate === "function"
+            ? data.createdAt.toDate().toISOString()
+            : toPlainDate(data.createdAt),
+      };
+    });
 
     return Response.json({
       ok: true,
@@ -74,6 +102,7 @@ export async function GET(request: Request, context: RouteContext) {
         state: profile.state ?? "",
       },
       profile,
+      reports,
       videos,
     });
   } catch (error) {

@@ -7,26 +7,35 @@ export async function POST(request: Request) {
     const payload = await request.json();
     const { username, password, ...profile } = payload;
 
-    if (!username || !password) {
+    if (!username) {
       return Response.json(
-        { ok: false, error: "Missing username or password." },
+        { ok: false, error: "Missing username." },
         { status: 400 }
       );
     }
 
-    const passwordHash = createHash("sha256")
-      .update(String(password))
-      .digest("hex");
-
     const userRef = doc(db, "users", String(username));
     const existingUser = await getDoc(userRef);
-    if (existingUser.exists()) {
-      const existingData = existingUser.data();
-      if (existingData?.passwordHash !== passwordHash) {
-        return Response.json(
-          { ok: false, error: "Username is already taken." },
-          { status: 409 }
-        );
+    if (!password && !existingUser.exists()) {
+      return Response.json(
+        { ok: false, error: "Password required to create account." },
+        { status: 400 }
+      );
+    }
+
+    let passwordHash: string | null = null;
+    if (password) {
+      passwordHash = createHash("sha256")
+        .update(String(password))
+        .digest("hex");
+      if (existingUser.exists()) {
+        const existingData = existingUser.data();
+        if (existingData?.passwordHash !== passwordHash) {
+          return Response.json(
+            { ok: false, error: "Username is already taken." },
+            { status: 409 }
+          );
+        }
       }
     }
 
@@ -36,7 +45,7 @@ export async function POST(request: Request) {
         username: String(username),
         email: String(profile.email ?? ""),
         role: "scout",
-        passwordHash,
+        ...(passwordHash ? { passwordHash } : {}),
         createdAt: serverTimestamp(),
       },
       { merge: true }

@@ -15,6 +15,8 @@ export default function ScoutProfilePage() {
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedSport, setSelectedSport] = useState("lacrosse");
   const [pendingPosition, setPendingPosition] = useState("Attack");
+  const [selectedGradYears, setSelectedGradYears] = useState<number[]>([]);
+  const [pendingGradYear, setPendingGradYear] = useState(2026);
 
   const positionOptions: Record<string, string[]> = {
     lacrosse: ["Attack", "Midfield", "Defense", "Goalie", "Faceoff"],
@@ -157,17 +159,73 @@ export default function ScoutProfilePage() {
               name="recruitingStates"
               label="Recruiting states"
             />
-            <label className="flex flex-col gap-2">
-              Minimum age
-              <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-                name="minAge"
-                type="number"
-                min={10}
-                max={25}
-                placeholder="16"
-              />
-            </label>
+            <div className="flex flex-col gap-3">
+              <div className="text-xs uppercase tracking-wider text-white/50">
+                Graduation years recruiting
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  value={pendingGradYear}
+                  onChange={(event) =>
+                    setPendingGradYear(Number(event.target.value))
+                  }
+                >
+                  {Array.from({ length: 10 }, (_, idx) => 2026 + idx).map(
+                    (year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    )
+                  )}
+                </select>
+                <button
+                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  type="button"
+                  onClick={() => {
+                    if (selectedGradYears.includes(pendingGradYear)) return;
+                    setSelectedGradYears((prev) => [
+                      ...prev,
+                      pendingGradYear,
+                    ]);
+                  }}
+                >
+                  Add year
+                </button>
+              </div>
+              {selectedGradYears.length ? (
+                <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                  {selectedGradYears.map((year) => (
+                    <div
+                      key={year}
+                      className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                    >
+                      <input
+                        type="hidden"
+                        name="gradYearsRecruiting"
+                        value={year}
+                      />
+                      <span>{year}</span>
+                      <button
+                        className="text-white/50 hover:text-white"
+                        type="button"
+                        onClick={() =>
+                          setSelectedGradYears((prev) =>
+                            prev.filter((item) => item !== year)
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-white/50">
+                  No years selected yet.
+                </p>
+              )}
+            </div>
             <div className="flex flex-col gap-3">
               <div className="text-xs uppercase tracking-wider text-white/50">
                 Positions recruiting

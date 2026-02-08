@@ -53,6 +53,7 @@
 - Purpose: browse athlete list
 - Primary actions: view profile, contact
 - Key elements: athlete rows with scouting report summary and actions
+- Search rows show a letter grade plus a short rationale (state, position, GPA, grad year)
 - UI states: pagination/loading more; empty; error
 
 ### Athlete Detail (Scout View)
@@ -86,10 +87,11 @@
 - Purpose: show AI scouting, coaching, and research; separate from demographics
 - Primary actions: switch Scouting Evaluation/About Me tabs, view redo drills
 - Key elements: full-length scouting report, coaching guidance, competitions and
-  results with date, event link, and results; add link input/button; combine
-  drills list with upload/redo and AI feedback per drill; competitions
-  auto-generated from athlete profile + sources
-- UI states: generating, generated, generation error, auto-update on new inputs
+  results table (event name, event link, summary); add/edit event inputs; manual
+  "Run research" action; combine drills list with upload/redo and AI feedback per
+  drill; competitions auto-generated from athlete profile + Google search; About
+  Me save shows "saving" while reports refresh
+- UI states: generating, generated, generation error, research empty state visible
 
 ### Athlete About Me (Tab)
 

@@ -1,10 +1,11 @@
-import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
+import { adminDb, adminFieldValue, adminStorage } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const athleteId = String(searchParams.get("athleteId") ?? "");
+  const includeUrls = searchParams.get("includeUrls") !== "false";
 
   if (!athleteId) {
     return Response.json(
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
         const data = doc.data();
         const filePath = data.filePath as string | undefined;
         let viewUrl: string | null = null;
-        if (filePath) {
+        if (filePath && includeUrls) {
           try {
             const [signedUrl] = await bucket.file(filePath).getSignedUrl({
               action: "read",
@@ -45,6 +46,28 @@ export async function GET(request: Request) {
           typeof data.createdAt?.toDate === "function"
             ? data.createdAt.toDate().toISOString()
             : null;
+        const analysisUpdatedAt =
+          typeof data.analysisUpdatedAt?.toDate === "function"
+            ? data.analysisUpdatedAt.toDate()
+            : null;
+
+        if (
+          data.analysisStatus === "running" &&
+          analysisUpdatedAt &&
+          Date.now() - analysisUpdatedAt.getTime() > 15 * 60 * 1000
+        ) {
+          await adminDb
+            .collection("videos")
+            .doc(doc.id)
+            .set(
+              {
+                analysisStatus: "failed",
+                analysisError: "Analysis timed out.",
+                analysisUpdatedAt: adminFieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+        }
 
         return {
           id: doc.id,
@@ -53,6 +76,7 @@ export async function GET(request: Request) {
           analysisStatus: data.analysisStatus ?? "pending",
           analysisNotes: data.analysisNotes ?? null,
           analysisMetrics: data.analysisMetrics ?? {},
+          analysisError: data.analysisError ?? null,
           uploadDate,
           createdAt,
           viewUrl,

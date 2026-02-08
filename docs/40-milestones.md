@@ -36,17 +36,17 @@
 
 ## Progress Today
 
-- Implemented basic login routing and account storage
-- Persisted scout and athlete profiles in Firestore
-- Populated About Me pages from Firestore (scout + athlete)
-- Added athlete event link persistence
-- Fixed profile form Enter-key submits
+- Implemented GCS upload flow + signed URLs for drill videos
+- Gemini drill analysis wired for wall ball, 20-yard dash, 5-10-5 shuttle
+- Coaching + scout report generation on drill/event updates
+- Athlete events CRUD and competitions table in UI
+- Research agent to auto-populate events on profile creation
+- Manual research re-run + report refresh on About Me save
 
 ## Next Steps
 
-- Finish video upload flow (GCS signed URLs + metadata save)
-- Implement GCS signed upload URLs and real video uploads
-- Connect Gemini for scouting/research/coaching report generation
+- Surface scout report in scout athlete view
+- Add contact workflow for scouts
 - Send real email alerts via SMTP/Gmail API
-- Replace static scout search/results with real data
+- Add light monitoring for Gemini failures/timeouts
 

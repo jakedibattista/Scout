@@ -242,7 +242,7 @@ export default function AthleteProfilePage() {
                 className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
                 name="gradYear"
                 type="number"
-                min={2024}
+                min={2026}
                 max={2035}
                 required
               />
@@ -390,7 +390,7 @@ export default function AthleteProfilePage() {
             </div>
             <StateChecklist
               name="relocateStates"
-              label="Willing-to-relocate states"
+              label="Willing-to-relocate state"
             />
           </div>
         </div>

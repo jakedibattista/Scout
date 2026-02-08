@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import PageShell from "../../_components/PageShell";
 import { db } from "@/lib/firebase";
 import StateChecklist from "../../_components/StateChecklist";
@@ -39,6 +39,13 @@ type AthleteAboutForm = {
   youtube: string;
 };
 
+type CompetitionEvent = {
+  id: string;
+  eventName: string;
+  url: string;
+  summary: string;
+};
+
 type VideoItem = {
   id: string;
   drillType: string;
@@ -46,6 +53,7 @@ type VideoItem = {
   analysisStatus: string;
   analysisNotes: string | null;
   analysisMetrics: Record<string, string | number>;
+  analysisError?: string | null;
   uploadDate: string | null;
   createdAt?: string | null;
   viewUrl: string | null;
@@ -90,6 +98,16 @@ export default function AthleteReportPage() {
     youtube: "",
   });
   const [aboutMessage, setAboutMessage] = useState("");
+  const [aboutSaving, setAboutSaving] = useState(false);
+  const [events, setEvents] = useState<CompetitionEvent[]>([]);
+  const [researchStatus, setResearchStatus] = useState<ReportStatus>("idle");
+  const [researchMessage, setResearchMessage] = useState("");
+  const [eventForm, setEventForm] = useState({
+    eventName: "",
+    url: "",
+    summary: "",
+  });
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const positionOptions: Record<string, string[]> = {
     lacrosse: ["Attack", "Midfield", "Defense", "Goalie", "Faceoff"],
     hockey: ["Forward", "Defense", "Goalie"],
@@ -101,47 +119,79 @@ export default function AthleteReportPage() {
     dash_20: "20-yard dash",
     shuttle_5_10_5: "5-10-5 shuttle",
   };
+  const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
+  const dashBenchmarks = { elite: 2.5, good: 2.7 };
+  const wallBallBenchmarks = { elite: 80, good: 60 };
   const drillKeys = useMemo(
     () => ["wall_ball", "dash_20", "shuttle_5_10_5"],
     []
   );
 
-  async function handleGenerate() {
+  async function loadReports() {
+    if (typeof window === "undefined") return;
+    const username = localStorage.getItem("athleteUsername");
+    if (!username) return;
+
     setStatus("loading");
     setMessage("");
 
     try {
-      const response = await fetch("/api/reports/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ athleteId: "demo-athlete" }),
-      });
+      const snapshot = await getDocs(
+        query(collection(db, "reports"), where("athleteId", "==", username))
+      );
+      const reports = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as Array<Record<string, unknown>>;
 
-      if (!response.ok) {
-        throw new Error("Report generation failed.");
-      }
+      const toMillis = (value: unknown) => {
+        if (!value) return 0;
+        if (typeof value === "object" && value !== null) {
+          const maybe = value as { toDate?: () => Date };
+          if (typeof maybe.toDate === "function") {
+            return maybe.toDate().getTime();
+          }
+        }
+        return 0;
+      };
 
-      const data = await response.json();
+      const byType = (type: string) =>
+        reports
+          .filter((item) => item.type === type)
+          .sort(
+            (a, b) =>
+              toMillis(b.createdAt) - toMillis(a.createdAt)
+          )[0];
+
+      const scout = byType("scout");
+      const coach = byType("coach");
+
+      const strengths =
+        Array.isArray(scout?.strengths) ? scout?.strengths.join(", ") : scout?.strengths;
+      const recommendedLevel =
+        (scout?.recommendedLevel as string | undefined) ??
+        (scout?.metrics as { recommendedLevel?: string } | undefined)?.recommendedLevel;
+
       setReport({
-        summary: data.reports?.[0]?.summary ?? "Scout report generated.",
-        strengths: "Speed, quick decision-making",
-        recommendedLevel: "D1-ready",
-        research: data.reports?.[1]?.summary ?? "Research report generated.",
-        coaching: data.reports?.[2]?.summary ?? "Coaching guidance generated.",
+        summary: (scout?.summary as string | undefined) ?? "",
+        strengths: strengths ? String(strengths) : undefined,
+        recommendedLevel: recommendedLevel ? String(recommendedLevel) : undefined,
+        coaching: (coach?.summary as string | undefined) ?? "",
+        research: "",
       });
-      setStatus("ready");
-      setMessage("Report updated.");
+
+      if (scout || coach) {
+        setStatus("ready");
+        setMessage("Report updated.");
+      } else {
+        setStatus("idle");
+        setMessage("No AI reports yet. Upload a drill or add an event.");
+      }
     } catch (error) {
       setStatus("error");
-      setMessage("Report failed to generate.");
+      setMessage("Unable to load reports.");
     }
   }
-
-  useEffect(() => {
-    if (status === "idle") {
-      handleGenerate();
-    }
-  }, [status]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -181,26 +231,104 @@ export default function AthleteReportPage() {
     loadProfile();
   }, []);
 
-  async function loadVideos() {
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  async function loadEvents() {
+    if (typeof window === "undefined") return;
+    const username = localStorage.getItem("athleteUsername");
+    if (!username) return;
+    try {
+      const response = await fetch(
+        `/api/athlete/events?athleteId=${encodeURIComponent(username)}`
+      );
+      const data = await response.json();
+      if (response.ok && data.ok) {
+        setEvents(Array.isArray(data.events) ? data.events : []);
+      }
+    } catch (error) {
+      setEvents([]);
+    }
+  }
+
+  async function handleRunResearch() {
+    if (typeof window === "undefined") return;
+    const athleteId = localStorage.getItem("athleteUsername");
+    if (!athleteId) {
+      setResearchStatus("error");
+      setResearchMessage("Missing athlete profile.");
+      return;
+    }
+
+    setResearchStatus("loading");
+    setResearchMessage("");
+
+    try {
+      const response = await fetch("/api/athlete/events/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ athleteId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || data?.ok === false) {
+        throw new Error(data?.error || "Research failed.");
+      }
+
+      const added = Number(data?.added ?? 0);
+      const message =
+        added > 0
+          ? `Added ${added} event${added === 1 ? "" : "s"}.`
+          : data?.reason || "No public events found yet.";
+      setResearchStatus("ready");
+      setResearchMessage(message);
+      await loadEvents();
+    } catch (error) {
+      setResearchStatus("error");
+      setResearchMessage(
+        error instanceof Error ? error.message : "Research failed."
+      );
+    }
+  }
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  async function loadVideos(includeUrls = true) {
     if (typeof window === "undefined") return;
     const username = localStorage.getItem("athleteUsername");
     if (!username) return;
 
     try {
       const response = await fetch(
-        `/api/athlete/videos?athleteId=${encodeURIComponent(username)}`
+        `/api/athlete/videos?athleteId=${encodeURIComponent(
+          username
+        )}&includeUrls=${includeUrls ? "true" : "false"}`
       );
       const data = await response.json();
       if (response.ok && data.ok) {
-        setVideos(Array.isArray(data.videos) ? data.videos : []);
+        const list = Array.isArray(data.videos) ? data.videos : [];
+        setVideos((prev) =>
+          list.map((item: VideoItem) => {
+            const existing = prev.find((video) => video.id === item.id);
+            return {
+              ...item,
+              viewUrl: item.viewUrl ?? existing?.viewUrl ?? null,
+            };
+          })
+        );
+        return list;
       }
     } catch (error) {
       setVideos([]);
     }
+    return [];
   }
 
   useEffect(() => {
-    loadVideos();
+    loadVideos(true);
   }, []);
 
   function resolveContentType(file: File) {
@@ -282,12 +410,40 @@ export default function AthleteReportPage() {
         throw new Error("Failed to complete upload.");
       }
 
+      const completeData = await completeResponse.json();
       setDrillStatus((prev) => ({ ...prev, [drillKey]: "uploaded" }));
       setDrillMessage((prev) => ({
         ...prev,
-        [drillKey]: "Upload complete.",
+        [drillKey]: "Upload complete. Running analysis...",
       }));
-      await loadVideos();
+
+      if (completeData?.videoId) {
+        const analyzeResponse = await fetch("/api/athlete/video/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId: completeData.videoId }),
+        });
+        if (!analyzeResponse.ok) {
+          setDrillMessage((prev) => ({
+            ...prev,
+            [drillKey]: "Analysis failed.",
+          }));
+        }
+      }
+      await loadVideos(true);
+
+      let attempts = 0;
+      const maxAttempts = 40;
+      while (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        const latestVideos = await loadVideos(false);
+        const latest = latestVideos.find((video) => video.drillType === drillKey);
+        if (latest?.analysisStatus === "ready" || latest?.analysisStatus === "failed") {
+          break;
+        }
+        attempts += 1;
+      }
+      await loadReports();
     } catch (error) {
       setDrillStatus((prev) => ({ ...prev, [drillKey]: "error" }));
       setDrillMessage((prev) => ({
@@ -298,6 +454,68 @@ export default function AthleteReportPage() {
     }
   }
 
+  function parseSeconds(value?: string | number | null) {
+    if (typeof value === "number") return value;
+    if (!value) return null;
+    const normalized = String(value).replace(/[^0-9.]/g, "");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function formatSeconds(value: number | null) {
+    if (value === null) return "—";
+    return `${value.toFixed(2)}s`;
+  }
+
+  function formatCount(value: number | null) {
+    if (value === null) return "—";
+    return `${Math.round(value)}`;
+  }
+
+  function getShuttleGrade(totalSeconds: number | null) {
+    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+    if (totalSeconds < shuttleBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (totalSeconds <= shuttleBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getDashGrade(totalSeconds: number | null) {
+    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+    if (totalSeconds < dashBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (totalSeconds <= dashBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getWallBallGrade(reps: number | null) {
+    if (reps === null) return { label: "Pending", color: "text-white/50" };
+    if (reps >= wallBallBenchmarks.elite) {
+      return { label: "Elite", color: "text-emerald-300" };
+    }
+    if (reps >= wallBallBenchmarks.good) {
+      return { label: "Good", color: "text-yellow-300" };
+    }
+    return { label: "Needs work", color: "text-red-300" };
+  }
+
+  function getMetricValue(
+    metrics: Record<string, string | number> | undefined,
+    keys: string[]
+  ) {
+    if (!metrics) return null;
+    for (const key of keys) {
+      if (metrics[key] !== undefined) return metrics[key];
+    }
+    return null;
+  }
+
   function handleAboutChange(event: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
     setAboutForm((prev) => ({ ...prev, [name]: value }));
@@ -305,6 +523,8 @@ export default function AthleteReportPage() {
 
   async function handleAboutSave() {
     try {
+      setAboutSaving(true);
+      setAboutMessage("Saving profile and updating reports...");
       const username =
         typeof window !== "undefined"
           ? localStorage.getItem("athleteUsername")
@@ -323,27 +543,76 @@ export default function AthleteReportPage() {
           },
         }),
       });
+      if (username) {
+        await fetch("/api/reports/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ athleteId: username }),
+        });
+        await loadReports();
+      }
       setIsEditingAbout(false);
       setAboutMessage("About Me updated.");
     } catch (error) {
       setAboutMessage("Unable to save updates.");
+    } finally {
+      setAboutSaving(false);
     }
   }
 
   async function handleAddEventLink() {
     try {
+      if (
+        !eventForm.eventName.trim() ||
+        !eventForm.url.trim() ||
+        !eventForm.summary.trim()
+      ) {
+        setMessage("Add event name, link, and summary.");
+        return;
+      }
+      const username =
+        typeof window !== "undefined"
+          ? localStorage.getItem("athleteUsername")
+          : null;
       await fetch("/api/athlete/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          athleteId: "demo-athlete",
-          url: "https://example.com",
-          notes: "Submitted by athlete",
+          athleteId: username,
+          eventName: eventForm.eventName,
+          url: eventForm.url,
+          summary: eventForm.summary,
         }),
       });
-      setMessage("Event link added.");
+      setEventForm({ eventName: "", url: "", summary: "" });
+      setMessage("Event added.");
+      await loadEvents();
+      await loadReports();
     } catch (error) {
       setMessage("Unable to add event link.");
+    }
+  }
+
+  async function handleSaveEvent() {
+    if (!editingEventId) return;
+    try {
+      await fetch("/api/athlete/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingEventId,
+          eventName: eventForm.eventName,
+          url: eventForm.url,
+          summary: eventForm.summary,
+        }),
+      });
+      setEditingEventId(null);
+      setEventForm({ eventName: "", url: "", summary: "" });
+      setMessage("Event updated.");
+      await loadEvents();
+      await loadReports();
+    } catch (error) {
+      setMessage("Unable to update event.");
     }
   }
 
@@ -389,13 +658,13 @@ export default function AthleteReportPage() {
           Log out
         </Link>
       </div>
-      {activeTab === "ai" && message ? (
+      {activeTab === "ai" && (message || aboutSaving) ? (
         <p
           className={`text-sm ${
             status === "error" ? "text-red-300" : "text-white/70"
           }`}
         >
-          {message}
+          {aboutSaving ? "Updating scouting report and coaching guidance..." : message}
         </p>
       ) : null}
       {activeTab === "ai" ? (
@@ -428,23 +697,136 @@ export default function AthleteReportPage() {
               {report.research ??
                 "Auto-generated from athlete profile data and sport-specific sources."}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                type="button"
+                onClick={handleRunResearch}
+                disabled={researchStatus === "loading"}
+              >
+                {researchStatus === "loading" ? "Running..." : "Run research"}
+              </button>
+              {researchMessage ? (
+                <span
+                  className={`text-xs ${
+                    researchStatus === "error"
+                      ? "text-red-300"
+                      : "text-white/60"
+                  }`}
+                >
+                  {researchMessage}
+                </span>
+              ) : null}
+            </div>
             <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
-              <label className="flex flex-col gap-3">
-                Add verified event links to improve accuracy.
-                <div className="flex flex-wrap gap-3">
-                  <input
-                    className="flex-1 rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
-                    placeholder="Paste event link..."
-                  />
+              <div className="text-xs uppercase tracking-wider text-white/50">
+                Add or update a competition entry
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <input
+                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  placeholder="Event name"
+                  value={eventForm.eventName}
+                  onChange={(event) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      eventName: event.target.value,
+                    }))
+                  }
+                />
+                <input
+                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  placeholder="Event link"
+                  value={eventForm.url}
+                  onChange={(event) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      url: event.target.value,
+                    }))
+                  }
+                />
+                <input
+                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white md:col-span-3"
+                  placeholder="Summary"
+                  value={eventForm.summary}
+                  onChange={(event) =>
+                    setEventForm((prev) => ({
+                      ...prev,
+                      summary: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  type="button"
+                  onClick={editingEventId ? handleSaveEvent : handleAddEventLink}
+                >
+                  {editingEventId ? "Save event" : "Add event"}
+                </button>
+                {editingEventId ? (
                   <button
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/70 hover:text-white"
                     type="button"
-                    onClick={handleAddEventLink}
+                    onClick={() => {
+                      setEditingEventId(null);
+                      setEventForm({ eventName: "", url: "", summary: "" });
+                    }}
                   >
-                    Add link
+                    Cancel
                   </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+              <div className="grid grid-cols-4 gap-4 border-b border-white/10 px-4 py-3 text-xs uppercase tracking-wider text-white/50">
+                <span>Event name</span>
+                <span>Event link</span>
+                <span>Summary</span>
+                <span className="text-right">Actions</span>
+              </div>
+              {events.length ? (
+                events.map((item) => (
+                  <div
+                    key={item.id}
+                    className="grid grid-cols-4 gap-4 px-4 py-3 text-xs text-white/70"
+                  >
+                    <div className="flex items-start">
+                      <span className="text-white">{item.eventName}</span>
+                    </div>
+                    <a
+                      className="text-yellow-300 hover:text-yellow-200"
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {item.url}
+                    </a>
+                    <span>{item.summary || "Summary pending."}</span>
+                    <div className="flex items-start justify-end">
+                      <button
+                        className="text-xs uppercase tracking-wider text-yellow-300"
+                        type="button"
+                        onClick={() => {
+                          setEditingEventId(item.id);
+                          setEventForm({
+                            eventName: item.eventName,
+                            url: item.url,
+                            summary: item.summary,
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-4 text-xs text-white/50">
+                  No public events found yet. Add one below or run research.
                 </div>
-              </label>
+              )}
             </div>
           </div>
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -462,6 +844,65 @@ export default function AthleteReportPage() {
                 const dateLabel = latest?.uploadDate
                   ? new Date(latest.uploadDate).toLocaleDateString()
                   : "";
+                const totalTimeValue =
+                  key === "shuttle_5_10_5"
+                    ? parseSeconds(
+                        getMetricValue(latest?.analysisMetrics, [
+                          "Total Time",
+                          "Finish Time",
+                          "total_time",
+                          "total_time_seconds",
+                          "totalTime",
+                          "timeSeconds",
+                          "time",
+                        ])
+                      )
+                    : key === "dash_20"
+                      ? parseSeconds(
+                          getMetricValue(latest?.analysisMetrics, [
+                            "Total Time",
+                            "Finish Time",
+                            "20_yard_total_time",
+                            "total_time",
+                            "total_time_seconds",
+                            "totalTime",
+                            "timeSeconds",
+                            "time",
+                          ])
+                        )
+                      : null;
+                const repsValue =
+                  key === "wall_ball"
+                    ? parseSeconds(
+                        getMetricValue(latest?.analysisMetrics, [
+                          "repetitions",
+                          "Repetitions",
+                          "reps",
+                          "total_reps_60s",
+                          "total_reps",
+                          "rep_count",
+                          "count",
+                        ])
+                      )
+                    : null;
+                const shuttleGrade =
+                  key === "shuttle_5_10_5"
+                    ? latest?.analysisStatus === "ready" && totalTimeValue === null
+                      ? { label: "Unavailable", color: "text-white/40" }
+                      : getShuttleGrade(totalTimeValue)
+                    : null;
+                const dashGrade =
+                  key === "dash_20"
+                    ? latest?.analysisStatus === "ready" && totalTimeValue === null
+                      ? { label: "Unavailable", color: "text-white/40" }
+                      : getDashGrade(totalTimeValue)
+                    : null;
+                const wallBallGrade =
+                  key === "wall_ball"
+                    ? latest?.analysisStatus === "ready" && repsValue === null
+                      ? { label: "Unavailable", color: "text-white/40" }
+                      : getWallBallGrade(repsValue)
+                    : null;
 
                 return (
                   <div
@@ -486,9 +927,68 @@ export default function AthleteReportPage() {
                       <div className="mt-2 text-xs text-white/50">
                         Uploading...
                       </div>
+                    ) : uploaded ? (
+                      <div className="mt-2 text-xs text-white/50">
+                        {latest?.analysisStatus === "failed"
+                          ? "Analysis failed."
+                          : latest?.analysisStatus === "ready"
+                            ? "Analysis complete."
+                            : drillMessage[key]
+                              ? drillMessage[key]
+                              : "Running analysis..."}
+                      </div>
                     ) : drillMessage[key] ? (
                       <div className="mt-2 text-xs text-white/50">
                         {drillMessage[key]}
+                      </div>
+                    ) : null}
+                    {key === "shuttle_5_10_5" ? (
+                      <div className="mt-3 flex items-center gap-3 text-xs">
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Speed: {formatSeconds(totalTimeValue)}
+                        </div>
+                        <div
+                          className={`rounded-full border border-white/10 px-3 py-1 ${shuttleGrade?.color ?? "text-white/50"}`}
+                        >
+                          {shuttleGrade?.label ?? "Pending"}
+                        </div>
+                      </div>
+                    ) : null}
+                    {key === "dash_20" ? (
+                      <div className="mt-3 flex items-center gap-3 text-xs">
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Speed: {formatSeconds(totalTimeValue)}
+                        </div>
+                        <div
+                          className={`rounded-full border border-white/10 px-3 py-1 ${dashGrade?.color ?? "text-white/50"}`}
+                        >
+                          {dashGrade?.label ?? "Pending"}
+                        </div>
+                      </div>
+                    ) : null}
+                    {key === "wall_ball" ? (
+                      <div className="mt-3 flex items-center gap-3 text-xs">
+                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                          Reps (60s): {formatCount(repsValue)}
+                        </div>
+                    <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                      Max streak:{" "}
+                      {formatCount(
+                        parseSeconds(
+                          getMetricValue(latest?.analysisMetrics, [
+                            "max_consecutive_reps",
+                            "maxConsecutiveReps",
+                            "max_streak",
+                            "maxStreak",
+                          ])
+                        )
+                      )}
+                    </div>
+                        <div
+                          className={`rounded-full border border-white/10 px-3 py-1 ${wallBallGrade?.color ?? "text-white/50"}`}
+                        >
+                          {wallBallGrade?.label ?? "Pending"}
+                        </div>
                       </div>
                     ) : null}
                     {uploaded ? (
@@ -497,19 +997,24 @@ export default function AthleteReportPage() {
                       </div>
                     ) : null}
                     {uploaded && latest?.viewUrl ? (
-                      <div className="mt-3 space-y-2">
-                        <video
-                          className="w-full rounded-xl border border-white/10"
-                          controls
-                          preload="metadata"
-                          src={latest.viewUrl}
-                        />
+                      <div className="mt-3">
+                        <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                          <video
+                            className="h-full w-full object-cover"
+                            controls
+                            preload="metadata"
+                            src={latest.viewUrl}
+                          />
+                        </div>
                       </div>
                     ) : null}
                     <div className="mt-3 text-xs text-white/60">
                       {uploaded
-                        ? latest?.analysisNotes ||
-                          "AI analysis will appear here after processing."
+                        ? latest?.analysisStatus === "failed"
+                          ? latest.analysisError ||
+                            "AI analysis failed. Try re-uploading."
+                          : latest?.analysisNotes ||
+                            "AI analysis will appear here after processing."
                         : "Upload a drill video to generate AI feedback."}
                     </div>
                   </div>
@@ -526,16 +1031,18 @@ export default function AthleteReportPage() {
               {isEditingAbout ? (
                 <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wider">
                   <button
-                    className="rounded-full bg-yellow-400 px-4 py-2 font-semibold text-black"
+                    className="rounded-full bg-yellow-400 px-4 py-2 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-70"
                     type="button"
                     onClick={handleAboutSave}
+                    disabled={aboutSaving}
                   >
-                    Save
+                    {aboutSaving ? "Saving..." : "Save"}
                   </button>
                   <button
-                    className="rounded-full border border-white/20 px-4 py-2 text-white/70 hover:text-white"
+                    className="rounded-full border border-white/20 px-4 py-2 text-white/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                     type="button"
                     onClick={handleAboutCancel}
+                    disabled={aboutSaving}
                   >
                     Cancel
                   </button>
@@ -620,7 +1127,7 @@ export default function AthleteReportPage() {
                 ) : (
                   <div>
                     {aboutForm.sport
-                      ? `${aboutForm.sport} · ${aboutForm.position}`
+                      ? `${aboutForm.sport.charAt(0).toUpperCase() + aboutForm.sport.slice(1)} · ${aboutForm.position}`
                       : aboutForm.position}
                   </div>
                 )}
