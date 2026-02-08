@@ -47,6 +47,8 @@ type AthleteResponse = {
   error?: string;
 };
 
+type ReportItem = NonNullable<AthleteResponse["reports"]>[number];
+
 const drillLabels: Record<string, string> = {
   wall_ball: "Wall ball",
   dash_20: "20-yard dash",
@@ -67,9 +69,7 @@ export default function AthleteDetailPage() {
     null
   );
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [scoutReport, setScoutReport] = useState<
-    AthleteResponse["reports"][number] | null
-  >(null);
+  const [scoutReport, setScoutReport] = useState<ReportItem | null>(null);
 
   useEffect(() => {
     if (!athleteId) return;

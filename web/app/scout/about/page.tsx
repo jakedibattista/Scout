@@ -34,7 +34,9 @@ export default function ScoutAboutPage() {
   });
   const [message, setMessage] = useState("");
 
-  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleChange(
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }

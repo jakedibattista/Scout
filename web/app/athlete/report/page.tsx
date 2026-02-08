@@ -304,10 +304,10 @@ export default function AthleteReportPage() {
     loadEvents();
   }, []);
 
-  async function loadVideos(includeUrls = true) {
-    if (typeof window === "undefined") return;
+  async function loadVideos(includeUrls = true): Promise<VideoItem[]> {
+    if (typeof window === "undefined") return [];
     const username = localStorage.getItem("athleteUsername");
-    if (!username) return;
+    if (!username) return [];
 
     try {
       const response = await fetch(

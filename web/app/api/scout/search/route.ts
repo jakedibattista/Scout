@@ -83,26 +83,31 @@ function applyProfileFilters({
 }
 
 function passesStateFilter(
-  athlete: { state?: string; relocateStates?: string[] },
+  athlete: Record<string, unknown>,
   recruitingStates?: string[]
 ) {
   if (!recruitingStates?.length) return true;
-  const athleteState = athlete.state ?? "";
+  const athleteState = String(athlete.state ?? "").trim();
   if (recruitingStates.includes(athleteState)) return true;
-  const relocate = athlete.relocateStates ?? [];
+  const relocate = Array.isArray(athlete.relocateStates)
+    ? (athlete.relocateStates as string[])
+    : [];
   return recruitingStates.some((state) => relocate.includes(state));
 }
 
 function passesPositionFilter(
-  athlete: { position?: string },
+  athlete: Record<string, unknown>,
   positions?: string[]
 ) {
   if (!positions?.length) return true;
-  const position = normalizePosition(athlete.position ?? "");
+  const position = normalizePosition(String(athlete.position ?? ""));
   return positions.includes(position);
 }
 
-function passesSportFilter(athlete: { sport?: string }, sport?: string) {
+function passesSportFilter(
+  athlete: Record<string, unknown>,
+  sport?: string
+) {
   if (!sport) return true;
   return normalizeText(athlete.sport) === normalizeText(sport);
 }
@@ -131,7 +136,7 @@ function parseNumber(value: unknown) {
 }
 
 function passesGradYears(
-  athlete: { gradYear?: number | string },
+  athlete: Record<string, unknown>,
   gradYearsRecruiting?: number[]
 ) {
   if (!gradYearsRecruiting?.length) return true;
@@ -208,7 +213,7 @@ export async function POST(request: Request) {
       .limit(50)
       .get();
     const athletes = athleteSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .map((doc) => ({ id: doc.id, ...doc.data() } as Record<string, unknown>))
       .filter((athlete) => passesSportFilter(athlete, filters.sport))
       .filter((athlete) =>
         passesStateFilter(athlete, filters.recruitingStates)
@@ -277,7 +282,7 @@ export async function POST(request: Request) {
 
     const results = athletes
       .map((athlete) => {
-        const athleteId = athlete.username ?? athlete.id;
+        const athleteId = String(athlete.username ?? athlete.id ?? "");
         const metrics = videosByAthlete[athleteId] ?? {};
         const shuttleTime = parseSeconds(
           getMetricValue(metrics.shuttle_5_10_5?.analysisMetrics, [
@@ -310,11 +315,7 @@ export async function POST(request: Request) {
           ])
         );
         const wallBallScore = wallBallReps ?? 0;
-        const gpa = parseNumber(athlete.gpa);
-        const gradYear = parseNumber(athlete.gradYear);
-        const position = String(athlete.position ?? "").trim() || "athlete";
-        const state = String(athlete.state ?? "").trim();
-        const sport = String(athlete.sport ?? "").trim();
+        const name = String(athlete.name ?? athleteId);
         const dashLabel =
           plan.sort?.by === "speed_score" && dashTime !== null
             ? `20-yard: ${formatSeconds(dashTime)}`
@@ -336,7 +337,7 @@ export async function POST(request: Request) {
 
         return {
           id: athleteId,
-          name: athlete.name ?? athleteId,
+          name,
           speedScore,
           wallBallScore,
           summary,
