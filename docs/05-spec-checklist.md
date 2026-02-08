@@ -41,7 +41,7 @@ short and specific. If you are unsure, write "TBD" and we will revisit.
 - Scout onboarding: skip separate onboarding, go straight to profile
 - Scout profile: 1-minute form with required fields
 - Scout search: NL search + auto-filter by sport and program tier/region
-- Scout results: results table + email alerts for saved searches
+- Scout results: results table + saved searches (no email alerts in MVP)
 - Athlete detail (scout view): athlete profile + videos + AI report with per-drill
   grade/date/notes
 - Athlete onboarding: skip separate onboarding, go straight to profile
@@ -72,7 +72,7 @@ short and specific. If you are unsure, write "TBD" and we will revisit.
 
 ### Report
 
-- Required: recommended level, strengths, weaknesses, key metrics, summary
+- Required: strengths, weaknesses, key metrics, summary
 - Optional: coach quotes, scholarship likelihood (if desired)
 
 ## 5) Gemini Agent Design
@@ -81,7 +81,7 @@ short and specific. If you are unsure, write "TBD" and we will revisit.
 
 - Inputs: videos, athlete profile, sport/position rubric
 - Output sections: summary, athleticism, technique, decision-making, top traits,
-  concerns, recommended level, next steps
+  concerns, next steps
 
 ### Agent 2: Athlete Research
 
@@ -111,7 +111,7 @@ short and specific. If you are unsure, write "TBD" and we will revisit.
 ## 7) MVP Scope
 
 - Must-have: athlete/scout intake, 3-drill combine, player profile, NL scout
-  search, email alerts for saved searches
+  search, saved searches
 - Nice-to-have: coaching and progress tracker for athletes over time
 - Explicitly excluded: any sport besides lacrosse
 

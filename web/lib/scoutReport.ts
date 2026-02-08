@@ -62,9 +62,8 @@ export async function buildAndStoreScoutReport(athleteId: string) {
     type: "scout",
     summary: report.summary,
     strengths: report.keyTraits,
-    weaknesses: report.riskFlags,
-    metrics: { recommendedLevel: report.recommendedLevel },
-    recommendedLevel: report.recommendedLevel,
+    weaknesses: report.weaknesses,
+    metrics: {},
     createdAt: adminFieldValue.serverTimestamp(),
   });
 

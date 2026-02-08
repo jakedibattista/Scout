@@ -1,5 +1,6 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
+import { withRetry } from "@/lib/gemini/retry";
 
 const defaultModel = "gemini-3-flash-preview";
 
@@ -15,48 +16,14 @@ type ScoutReportInput = {
 };
 
 type ScoutReportOutput = {
-  recommendedLevel: "D1" | "D2" | "D3" | "JUCO" | "Club";
   summary: string;
   keyTraits: string[];
-  riskFlags: string[];
+  weaknesses: string[];
 };
 
-function isRetryable(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("ECONNRESET") ||
-    message.includes("ETIMEDOUT") ||
-    message.includes("socket hang up") ||
-    message.includes("fetch failed") ||
-    message.includes("EAI_AGAIN") ||
-    message.includes("ECONNREFUSED") ||
-    message.includes("503") ||
-    message.includes("504")
-  );
-}
-
-async function withRetry<T>(label: string, fn: () => Promise<T>) {
-  let attempt = 0;
-  let lastError: unknown;
-
-  while (attempt < 3) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      attempt += 1;
-      if (!isRetryable(error) || attempt >= 3) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${label} failed: ${message}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
-    }
-  }
-
-  throw lastError;
-}
+ 
 function buildPrompt(input: ScoutReportInput) {
-  return `You are a college scout. Summarize an athlete's current readiness and potential based on profile, drills, and competitions. Be conservative with recommendations; only assign higher levels when evidence is strong and consistent. If data is limited or mixed, lean toward a lower level. Only use facts and numbers that are present in the provided data. If a metric is missing, do not guess or invent it.
+  return `You are a college scout. Summarize an athlete's current readiness and potential based on profile, drills, and competitions. Be conservative with recommendations; only assign higher levels when evidence is strong and consistent. If data is limited or mixed, lean toward a lower level. Use ONLY the athlete's provided name (do not guess, expand, or "lookup" names). Only use facts and numbers present in the provided data. If a metric or event is missing, do not guess or invent it.
 
 Athlete profile:
 ${JSON.stringify(input.athleteProfile)}
@@ -69,19 +36,18 @@ ${JSON.stringify(input.events)}
 
 Return JSON:
 {
-  "recommendedLevel": "D1" | "D2" | "D3" | "JUCO" | "Club",
   "summary": string,
   "keyTraits": string[],
-  "riskFlags": string[]
+  "weaknesses": string[]
 }
 
 Rules:
-- First determine the recommended college level.
 - Summary should be 2-4 sentences, scout-facing and quick to scan.
 - keyTraits: 3-5 bullets of what a scout cares about most.
-- riskFlags: 0-3 items if concerns exist (injury, inconsistency, gaps, etc).
+- weaknesses: 1-4 items if concerns exist (otherwise empty array).
 - Do not introduce numbers or claims not in the input data.
 - Avoid inflated praise; reserve "elite" for clearly top-tier results.
+- Do not mention teams, rankings, showcases, or awards unless they exist in the events input.
 - Return ONLY valid JSON.`;
 }
 
@@ -93,17 +59,15 @@ function parseOutput(raw: string): ScoutReportOutput {
   try {
     const parsed = JSON.parse(candidate) as ScoutReportOutput;
     return {
-      recommendedLevel: parsed.recommendedLevel ?? "Club",
       summary: parsed.summary ?? trimmed,
       keyTraits: Array.isArray(parsed.keyTraits) ? parsed.keyTraits : [],
-      riskFlags: Array.isArray(parsed.riskFlags) ? parsed.riskFlags : [],
+      weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
     };
   } catch {
     return {
-      recommendedLevel: "Club",
       summary: trimmed,
       keyTraits: [],
-      riskFlags: [],
+      weaknesses: [],
     };
   }
 }

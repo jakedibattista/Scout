@@ -21,12 +21,12 @@
 
 - Connect frontend to backend
 - Harden error states and auth
-- Pending: GCS uploads, Gemini reports, SMTP/Gmail alerts, real scout search
+- Pending: light monitoring for Gemini failures/timeouts
 
 ## Phase 4 - Release Readiness
 
 - Performance and security review
-- Monitoring and alerting configured
+- Monitoring configured for Gemini failures/timeouts
 
 ## Test Plan
 
@@ -42,11 +42,14 @@
 - Athlete events CRUD and competitions table in UI
 - Research agent to auto-populate events on profile creation
 - Manual research re-run + report refresh on About Me save
+- Scout report surfaced in scout athlete view
 
 ## Next Steps
 
-- Surface scout report in scout athlete view
-- Add contact workflow for scouts
-- Send real email alerts via SMTP/Gmail API
 - Add light monitoring for Gemini failures/timeouts
+
+## Future Work
+
+- Contact workflow for scouts
+- Email/push notifications for saved searches
 

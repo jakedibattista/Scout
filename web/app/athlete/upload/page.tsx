@@ -2,7 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
 import PageShell from "../../_components/PageShell";
+import { db } from "@/lib/firebase";
+import {
+  formatCount,
+  formatSeconds,
+  getDashGrade,
+  getMetricValue,
+  getShuttleGrade,
+  getWallBallGrade,
+  parseSeconds,
+} from "@/lib/metrics";
 
 type DrillKey = "wall_ball" | "dash_20" | "shuttle_5_10_5";
 type DrillStatus = "idle" | "uploading" | "uploaded" | "error";
@@ -37,13 +48,10 @@ const drills: {
   },
 ];
 
-const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
-const dashBenchmarks = { elite: 2.5, good: 2.7 };
-const wallBallBenchmarks = { elite: 80, good: 60 };
-
 export default function AthleteUploadPage() {
   const router = useRouter();
   const [athleteId, setAthleteId] = useState("unknown");
+  const [titleLabel, setTitleLabel] = useState("Lacrosse Combine");
   const [status, setStatus] = useState<Record<DrillKey, DrillStatus>>({
     wall_ball: "idle",
     dash_20: "idle",
@@ -75,74 +83,38 @@ export default function AthleteUploadPage() {
     },
   });
 
-  function parseSeconds(value: unknown) {
-    if (typeof value === "number") return value;
-    if (typeof value !== "string") return null;
-    const normalized = value.replace(/[^\d.]/g, "");
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  function formatSeconds(value: number | null) {
-    if (value === null) return "—";
-    return `${value.toFixed(2)}s`;
-  }
-
-  function formatCount(value: number | null) {
-    if (value === null) return "—";
-    return `${Math.round(value)}`;
-  }
-
-  function getShuttleGrade(totalSeconds: number | null) {
-    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
-    if (totalSeconds < shuttleBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (totalSeconds <= shuttleBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getDashGrade(totalSeconds: number | null) {
-    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
-    if (totalSeconds < dashBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (totalSeconds <= dashBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getWallBallGrade(reps: number | null) {
-    if (reps === null) return { label: "Pending", color: "text-white/50" };
-    if (reps >= wallBallBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (reps >= wallBallBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getMetricValue(
-    metrics: Record<string, string | number> | undefined,
-    keys: string[]
-  ) {
-    if (!metrics) return null;
-    for (const key of keys) {
-      if (metrics[key] !== undefined) return metrics[key];
-    }
-    return null;
-  }
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem("athleteUsername");
     if (stored) {
       setAthleteId(stored);
     }
+  }, []);
+
+  useEffect(() => {
+    async function loadProfileTitle() {
+      if (typeof window === "undefined") return;
+      const username = localStorage.getItem("athleteUsername");
+      if (!username) return;
+      try {
+        const snapshot = await getDoc(doc(db, "athleteProfiles", username));
+        if (!snapshot.exists()) return;
+        const profile = snapshot.data() ?? {};
+        const sport = String(profile.sport ?? "lacrosse");
+        const position = String(profile.position ?? "").trim();
+        const sportLabel = sport
+          ? sport.charAt(0).toUpperCase() + sport.slice(1)
+          : "Lacrosse";
+        const nextTitle = position
+          ? `${sportLabel} ${position} Combine`
+          : `${sportLabel} Combine`;
+        setTitleLabel(nextTitle);
+      } catch {
+        // Keep default title on failure.
+      }
+    }
+
+    loadProfileTitle();
   }, []);
 
   function resolveContentType(file: File) {
@@ -320,7 +292,7 @@ export default function AthleteUploadPage() {
 
   return (
     <PageShell
-      title="Lacrosse Defender Combine"
+      title={titleLabel}
       subtitle="Record a video for each drill and upload it to complete your profile."
     >
       <div className="grid gap-6 md:grid-cols-3">
@@ -333,6 +305,8 @@ export default function AthleteUploadPage() {
                   getMetricValue(metrics, [
                     "Total Time",
                     "Finish Time",
+                          "Total Time (s)",
+                          "Finish Time (s)",
                     "total_time",
                     "totalTime",
                     "total_time_seconds",
@@ -347,6 +321,8 @@ export default function AthleteUploadPage() {
                   getMetricValue(metrics, [
                     "Total Time",
                     "Finish Time",
+                          "Total Time (s)",
+                          "Finish Time (s)",
                     "20_yard_total_time",
                     "total_time",
                     "totalTime",
@@ -363,6 +339,7 @@ export default function AthleteUploadPage() {
                     "repetitions",
                     "Repetitions",
                     "reps",
+                    "total_reps_60s",
                     "rep_count",
                     "total_reps",
                     "count",
@@ -412,14 +389,16 @@ export default function AthleteUploadPage() {
               </button>
             )}
             <div className="mt-6 flex flex-col gap-3">
-              <input
-                className="rounded-2xl border border-dashed border-white/30 px-4 py-3 text-xs text-white/70"
-                type="file"
-                accept="video/*,video/quicktime"
-                onChange={(event) =>
-                  handleUpload(drill.key, event.target.files?.[0])
-                }
-              />
+              {status[drill.key] === "uploaded" ? null : (
+                <input
+                  className="rounded-2xl border border-dashed border-white/30 px-4 py-3 text-xs text-white/70"
+                  type="file"
+                  accept="video/*,video/quicktime"
+                  onChange={(event) =>
+                    handleUpload(drill.key, event.target.files?.[0])
+                  }
+                />
+              )}
             </div>
             {message[drill.key] ? (
               <p className="mt-4 text-xs text-white/60">

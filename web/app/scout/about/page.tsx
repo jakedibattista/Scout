@@ -12,6 +12,7 @@ type ScoutProfileForm = {
   email: string;
   program: string;
   sport: string;
+  genderFocus: string;
   level: string;
   recruitingStates: string[];
   gradYearsRecruiting: number[];
@@ -25,6 +26,7 @@ export default function ScoutAboutPage() {
     email: "scout@email.com",
     program: "Program Name",
     sport: "Lacrosse",
+    genderFocus: "male",
     level: "D1",
     recruitingStates: ["MD", "VA", "PA"],
     gradYearsRecruiting: [2026, 2027],
@@ -71,6 +73,7 @@ export default function ScoutAboutPage() {
         email: String(profile.email ?? ""),
         program: String(profile.program ?? ""),
         sport: nextSport,
+        genderFocus: String(profile.genderFocus ?? "male"),
         level: String(profile.level ?? ""),
         recruitingStates: Array.isArray(profile.recruitingStates)
           ? profile.recruitingStates
@@ -251,6 +254,30 @@ export default function ScoutAboutPage() {
                 {form.sport
                   ? form.sport.charAt(0).toUpperCase() + form.sport.slice(1)
                   : ""}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wider text-white/50">
+              Recruiting Gender
+            </div>
+            {isEditing ? (
+              <select
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                name="genderFocus"
+                value={form.genderFocus}
+                onChange={handleChange}
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="both">Both</option>
+              </select>
+            ) : (
+              <div>
+                {form.genderFocus
+                  ? form.genderFocus.charAt(0).toUpperCase() +
+                    form.genderFocus.slice(1)
+                  : "--"}
               </div>
             )}
           </div>

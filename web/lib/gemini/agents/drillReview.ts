@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { adminStorage } from "@/lib/firebaseAdmin";
 import { getGeminiClient } from "@/lib/gemini/client";
+import { withRetry } from "@/lib/gemini/retry";
 
 const defaultModel = "gemini-3-flash-preview";
 const fallbackModel = "gemini-3-pro-preview";
@@ -67,41 +68,6 @@ function parseAnalysis(raw: string): DrillAnalysis {
   } catch (error) {
     return { notes: trimmed, metrics: {} };
   }
-}
-
-function isRetryable(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("ECONNRESET") ||
-    message.includes("ETIMEDOUT") ||
-    message.includes("socket hang up") ||
-    message.includes("fetch failed") ||
-    message.includes("EAI_AGAIN") ||
-    message.includes("ECONNREFUSED") ||
-    message.includes("503") ||
-    message.includes("504")
-  );
-}
-
-async function withRetry<T>(label: string, fn: () => Promise<T>) {
-  let attempt = 0;
-  let lastError: unknown;
-
-  while (attempt < 3) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      attempt += 1;
-      if (!isRetryable(error) || attempt >= 3) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${label} failed: ${message}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
-    }
-  }
-
-  throw lastError;
 }
 
 async function waitForFileActive(

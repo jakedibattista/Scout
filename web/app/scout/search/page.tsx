@@ -7,7 +7,13 @@ import PageShell from "../../_components/PageShell";
 type SearchResult = {
   id: string;
   name: string;
-  grade: string;
+  summary: string;
+};
+
+type SavedSearch = {
+  id: string;
+  query: string;
+  filters?: Record<string, unknown> | null;
 };
 
 type SearchStatus = "idle" | "searching" | "done" | "error";
@@ -19,7 +25,11 @@ export default function ScoutSearchPage() {
   const [planJson, setPlanJson] = useState("");
   const [notifyEnabled, setNotifyEnabled] = useState(false);
   const [lastQuery, setLastQuery] = useState("");
-  const [savedSearches, setSavedSearches] = useState<string[]>([]);
+  const [lastFilters, setLastFilters] = useState<Record<string, unknown> | null>(
+    null
+  );
+  const [lastSortBy, setLastSortBy] = useState<string | null>(null);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
 
   async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,7 +58,18 @@ export default function ScoutSearchPage() {
         throw new Error(data?.error || "Search failed.");
       }
       setResults(data.results ?? []);
-      setPlanJson(data.plan ? JSON.stringify(data.plan, null, 2) : "");
+      setLastFilters(data.parsedFilters ?? null);
+      if (data.plan) {
+        const merged = {
+          ...data.plan,
+          filters: data.parsedFilters ?? data.plan.filters,
+        };
+        setPlanJson(JSON.stringify(merged, null, 2));
+        setLastSortBy(data.plan?.sort?.by ?? null);
+      } else {
+        setPlanJson("");
+        setLastSortBy(null);
+      }
       setStatus("done");
       setMessage(
         data.results?.length ? "Matches found." : "No matches yet."
@@ -63,6 +84,10 @@ export default function ScoutSearchPage() {
     if (!lastQuery) {
       return;
     }
+    if (savedSearches.some((search) => search.query === lastQuery)) {
+      setNotifyEnabled(true);
+      return;
+    }
     try {
       const scoutUsername =
         typeof window !== "undefined"
@@ -75,6 +100,7 @@ export default function ScoutSearchPage() {
           query: lastQuery,
           notifyEmail: true,
           scoutUsername,
+          filters: lastFilters,
         }),
       });
       if (!response.ok) {
@@ -83,16 +109,33 @@ export default function ScoutSearchPage() {
     } catch (error) {
       // Non-blocking for MVP
     }
-    if (!savedSearches.includes(lastQuery)) {
-      setSavedSearches((prev) => [lastQuery, ...prev]);
+    if (!savedSearches.some((search) => search.query === lastQuery)) {
+      setSavedSearches((prev) => [
+        { id: `temp-${Date.now()}`, query: lastQuery, filters: lastFilters },
+        ...prev,
+      ]);
     }
     setNotifyEnabled(true);
   }
 
-  function handleRemoveSearch(item: string) {
-    setSavedSearches((prev) => prev.filter((search) => search !== item));
-    if (item === lastQuery) {
+  async function handleRemoveSearch(item: SavedSearch) {
+    setSavedSearches((prev) => prev.filter((search) => search.id !== item.id));
+    if (item.query === lastQuery) {
       setNotifyEnabled(false);
+    }
+
+    try {
+      const scoutUsername =
+        typeof window !== "undefined"
+          ? localStorage.getItem("scoutUsername")
+          : null;
+      await fetch("/api/scout/search/save", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, scoutUsername }),
+      });
+    } catch (error) {
+      // Non-blocking for MVP
     }
   }
 
@@ -121,6 +164,11 @@ export default function ScoutSearchPage() {
   useEffect(() => {
     loadSavedSearches();
   }, []);
+
+  useEffect(() => {
+    if (!lastQuery) return;
+    setNotifyEnabled(savedSearches.some((search) => search.query === lastQuery));
+  }, [lastQuery, savedSearches]);
 
   return (
     <PageShell
@@ -203,6 +251,15 @@ export default function ScoutSearchPage() {
           <span>Scouting Report</span>
           <span>Actions</span>
         </div>
+        {lastSortBy ? (
+          <div className="border-b border-white/10 px-6 py-2 text-xs text-white/50">
+            {lastSortBy === "speed_score"
+              ? "Sorted by speed (shuttle + 20-yard dash)."
+              : lastSortBy === "wall_ball_score"
+                ? "Sorted by wall ball reps (60s)."
+                : `Sorted by ${lastSortBy.replace(/_/g, " ")}.`}
+          </div>
+        ) : null}
         <div className="divide-y divide-white/10">
           {results.length ? (
             results.map((athlete) => (
@@ -211,11 +268,8 @@ export default function ScoutSearchPage() {
                 className="grid grid-cols-3 gap-4 px-6 py-4 text-sm"
               >
                 <span className="text-white">{athlete.name}</span>
-                <div className="flex flex-col gap-1">
-                  <span className="text-white/70">{athlete.grade}</span>
-                  <span className="text-xs text-white/50">
-                    {athlete.reason}
-                  </span>
+                <div className="text-xs text-white/60">
+                  {athlete.summary}
                 </div>
                 <div className="flex items-center gap-3 text-xs uppercase tracking-wider">
                   <Link
@@ -252,19 +306,19 @@ export default function ScoutSearchPage() {
         <div className="mt-4 grid gap-3 text-sm text-white/70">
           {savedSearches.length ? (
             savedSearches.map((item) => (
-            <div
-              key={item}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
-            >
-              <span>{item}</span>
-              <button
-                className="text-xs font-semibold uppercase tracking-wider text-yellow-300"
-                type="button"
-                onClick={() => handleRemoveSearch(item)}
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
               >
-                Remove
-              </button>
-            </div>
+                <span>{item.query}</span>
+                <button
+                  className="text-xs font-semibold uppercase tracking-wider text-yellow-300"
+                  type="button"
+                  onClick={() => handleRemoveSearch(item)}
+                >
+                  Remove
+                </button>
+              </div>
             ))
           ) : (
             <div className="text-sm text-white/50">

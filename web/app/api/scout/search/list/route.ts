@@ -31,8 +31,12 @@ export async function GET(request: Request) {
     }
 
     const searches = snapshot.docs
-      .map((doc) => doc.data().query)
-      .filter(Boolean);
+      .map((doc) => ({
+        id: doc.id,
+        query: doc.data().query,
+        filters: doc.data().filters ?? null,
+      }))
+      .filter((item) => Boolean(item.query));
 
     return Response.json({ ok: true, searches });
   } catch (error) {

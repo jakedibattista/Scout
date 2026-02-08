@@ -104,6 +104,14 @@ export default function StateChecklist({
     }
   }
 
+  function selectAllStates() {
+    if (onChange) {
+      onChange([...states]);
+    } else {
+      setInternal([...states]);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="text-xs uppercase tracking-wider text-white/50">
@@ -128,6 +136,14 @@ export default function StateChecklist({
           disabled={!availableStates.length}
         >
           Add state
+        </button>
+        <button
+          className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+          type="button"
+          onClick={selectAllStates}
+          disabled={selected.length === states.length}
+        >
+          Select all
         </button>
       </div>
       {selected.length ? (

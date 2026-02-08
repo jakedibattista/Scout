@@ -32,6 +32,26 @@ function dedupeEvents(events: AthleteResearchEvent[]) {
   });
 }
 
+function normalizeTokens(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length >= 2);
+}
+
+function extractYears(value: string) {
+  const matches = value.match(/\b(19|20)\d{2}\b/g);
+  return matches ? matches.map((match) => Number(match)) : [];
+}
+
+function ensureCitedSummary(summary: string, url: string) {
+  if (!summary) return `Source: ${url}`;
+  const lower = summary.toLowerCase();
+  if (lower.includes(url.toLowerCase())) return summary;
+  return `${summary} (Source: ${url})`;
+}
+
 export async function buildAndStoreResearchEvents(
   athleteId: string,
   profile: ResearchProfile,
@@ -81,6 +101,10 @@ export async function buildAndStoreResearchEvents(
     return { ok: false, added: 0, reason: "Research failed. Try again." };
   }
 
+  const nameTokens = normalizeTokens(athleteName);
+  const lastName = nameTokens.length ? nameTokens[nameTokens.length - 1] : "";
+  const gradYear = Number(profile.gradYear ?? 0) || null;
+
   const events = dedupeEvents(extracted).filter((event) => {
     const nameKey = event.eventName.toLowerCase();
     const urlKey = event.url.toLowerCase();
@@ -89,6 +113,17 @@ export async function buildAndStoreResearchEvents(
     }
     existingNames.add(nameKey);
     existingUrls.add(urlKey);
+
+    const context = `${event.eventName} ${event.summary} ${event.url}`.toLowerCase();
+    if (lastName && !context.includes(lastName)) {
+      return false;
+    }
+    if (gradYear) {
+      const years = extractYears(context);
+      if (years.length && !years.includes(gradYear)) {
+        return false;
+      }
+    }
     return true;
   });
 
@@ -97,16 +132,17 @@ export async function buildAndStoreResearchEvents(
   }
 
   await Promise.all(
-    events.map((event) =>
-      adminDb.collection("events").add({
+    events.map((event) => {
+      const summary = ensureCitedSummary(event.summary, event.url);
+      return adminDb.collection("events").add({
         athleteId,
         eventName: event.eventName,
         url: event.url,
-        summary: event.summary,
+        summary,
         createdAt: adminFieldValue.serverTimestamp(),
         updatedAt: adminFieldValue.serverTimestamp(),
-      })
-    )
+      });
+    })
   );
 
   return { ok: true, added: events.length };

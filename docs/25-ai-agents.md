@@ -16,6 +16,7 @@ shares the same Gemini client but has its own prompt, schema, and output shape.
 - Purpose: fill "Competitions and Results" with external events
 - Input: athlete profile + Gemini Google Search tool
 - Output: event entries stored in `events` (event name, link, summary)
+- Guardrails: require athlete name match, skip mismatched grad years, cite source URL in summary
 
 ## Agent 3: Scouting + Coaching Guidance
 

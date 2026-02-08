@@ -6,13 +6,22 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import PageShell from "../../_components/PageShell";
 import { db } from "@/lib/firebase";
 import StateChecklist from "../../_components/StateChecklist";
+import {
+  formatCount,
+  formatSeconds,
+  getDashGrade,
+  getMetricValue,
+  getShuttleGrade,
+  getWallBallGrade,
+  parseSeconds,
+} from "@/lib/metrics";
 
 type ReportStatus = "idle" | "loading" | "ready" | "error";
 type DrillStatus = "idle" | "uploading" | "uploaded" | "error";
 type ReportPayload = {
   summary?: string;
   strengths?: string;
-  recommendedLevel?: string;
+  weaknesses?: string;
   research?: string;
   coaching?: string;
 };
@@ -20,6 +29,7 @@ type ReportPayload = {
 type AthleteAboutForm = {
   name: string;
   sport: string;
+  gender: string;
   position: string;
   gradYear: string;
   state: string;
@@ -79,6 +89,7 @@ export default function AthleteReportPage() {
   const [aboutForm, setAboutForm] = useState<AthleteAboutForm>({
     name: "Jordan Wells",
     sport: "lacrosse",
+    gender: "male",
     position: "Defender",
     gradYear: "2026",
     state: "MD",
@@ -119,9 +130,6 @@ export default function AthleteReportPage() {
     dash_20: "20-yard dash",
     shuttle_5_10_5: "5-10-5 shuttle",
   };
-  const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
-  const dashBenchmarks = { elite: 2.5, good: 2.7 };
-  const wallBallBenchmarks = { elite: 80, good: 60 };
   const drillKeys = useMemo(
     () => ["wall_ball", "dash_20", "shuttle_5_10_5"],
     []
@@ -168,14 +176,13 @@ export default function AthleteReportPage() {
 
       const strengths =
         Array.isArray(scout?.strengths) ? scout?.strengths.join(", ") : scout?.strengths;
-      const recommendedLevel =
-        (scout?.recommendedLevel as string | undefined) ??
-        (scout?.metrics as { recommendedLevel?: string } | undefined)?.recommendedLevel;
+      const weaknesses =
+        Array.isArray(scout?.weaknesses) ? scout?.weaknesses.join(", ") : scout?.weaknesses;
 
       setReport({
         summary: (scout?.summary as string | undefined) ?? "",
         strengths: strengths ? String(strengths) : undefined,
-        recommendedLevel: recommendedLevel ? String(recommendedLevel) : undefined,
+        weaknesses: weaknesses ? String(weaknesses) : undefined,
         coaching: (coach?.summary as string | undefined) ?? "",
         research: "",
       });
@@ -206,6 +213,7 @@ export default function AthleteReportPage() {
       setAboutForm({
         name: String(profile.name ?? ""),
         sport: String(profile.sport ?? "lacrosse"),
+        gender: String(profile.gender ?? "male"),
         position: String(profile.position ?? ""),
         gradYear: String(profile.gradYear ?? ""),
         state: String(profile.state ?? ""),
@@ -454,68 +462,6 @@ export default function AthleteReportPage() {
     }
   }
 
-  function parseSeconds(value?: string | number | null) {
-    if (typeof value === "number") return value;
-    if (!value) return null;
-    const normalized = String(value).replace(/[^0-9.]/g, "");
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  function formatSeconds(value: number | null) {
-    if (value === null) return "—";
-    return `${value.toFixed(2)}s`;
-  }
-
-  function formatCount(value: number | null) {
-    if (value === null) return "—";
-    return `${Math.round(value)}`;
-  }
-
-  function getShuttleGrade(totalSeconds: number | null) {
-    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
-    if (totalSeconds < shuttleBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (totalSeconds <= shuttleBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getDashGrade(totalSeconds: number | null) {
-    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
-    if (totalSeconds < dashBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (totalSeconds <= dashBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getWallBallGrade(reps: number | null) {
-    if (reps === null) return { label: "Pending", color: "text-white/50" };
-    if (reps >= wallBallBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (reps >= wallBallBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getMetricValue(
-    metrics: Record<string, string | number> | undefined,
-    keys: string[]
-  ) {
-    if (!metrics) return null;
-    for (const key of keys) {
-      if (metrics[key] !== undefined) return metrics[key];
-    }
-    return null;
-  }
-
   function handleAboutChange(event: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
     setAboutForm((prev) => ({ ...prev, [name]: value }));
@@ -616,6 +562,34 @@ export default function AthleteReportPage() {
     }
   }
 
+  async function handleDeleteEvent(id: string) {
+    try {
+      const confirmed =
+        typeof window !== "undefined"
+          ? window.confirm("Delete this event?")
+          : false;
+      if (!confirmed) return;
+      const username =
+        typeof window !== "undefined"
+          ? localStorage.getItem("athleteUsername")
+          : null;
+      await fetch("/api/athlete/events", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, athleteId: username }),
+      });
+      if (editingEventId === id) {
+        setEditingEventId(null);
+        setEventForm({ eventName: "", url: "", summary: "" });
+      }
+      setMessage("Event deleted.");
+      await loadEvents();
+      await loadReports();
+    } catch (error) {
+      setMessage("Unable to delete event.");
+    }
+  }
+
   function handleAboutCancel() {
     setIsEditingAbout(false);
     setAboutMessage("");
@@ -680,7 +654,7 @@ export default function AthleteReportPage() {
                 Strengths: {report.strengths ?? "Speed, quick decision-making"}
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
-                Recommended level: {report.recommendedLevel ?? "D1-ready"}
+                Weaknesses: {report.weaknesses ?? "Needs more consistency."}
               </div>
             </div>
           </div>
@@ -780,33 +754,33 @@ export default function AthleteReportPage() {
               </div>
             </div>
             <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-              <div className="grid grid-cols-4 gap-4 border-b border-white/10 px-4 py-3 text-xs uppercase tracking-wider text-white/50">
-                <span>Event name</span>
-                <span>Event link</span>
-                <span>Summary</span>
-                <span className="text-right">Actions</span>
+              <div className="grid grid-cols-12 gap-4 border-b border-white/10 px-4 py-3 text-xs uppercase tracking-wider text-white/50">
+                <span className="col-span-3">Event name</span>
+                <span className="col-span-4">Event link</span>
+                <span className="col-span-4">Summary</span>
+                <span className="col-span-1 text-right">Actions</span>
               </div>
               {events.length ? (
                 events.map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-4 gap-4 px-4 py-3 text-xs text-white/70"
+                    className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-white/70"
                   >
-                    <div className="flex items-start">
+                    <div className="col-span-3 flex items-start">
                       <span className="text-white">{item.eventName}</span>
                     </div>
                     <a
-                      className="text-yellow-300 hover:text-yellow-200"
+                      className="col-span-4 text-yellow-300 hover:text-yellow-200 break-words"
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
                     >
                       {item.url}
                     </a>
-                    <span>{item.summary || "Summary pending."}</span>
-                    <div className="flex items-start justify-end">
+                    <span className="col-span-4">{item.summary || "Summary pending."}</span>
+                    <div className="col-span-1 flex flex-col items-end gap-2">
                       <button
-                        className="text-xs uppercase tracking-wider text-yellow-300"
+                        className="text-xs uppercase tracking-wider text-yellow-300 hover:text-yellow-200"
                         type="button"
                         onClick={() => {
                           setEditingEventId(item.id);
@@ -818,6 +792,13 @@ export default function AthleteReportPage() {
                         }}
                       >
                         Edit
+                      </button>
+                      <button
+                        className="text-xs uppercase tracking-wider text-white/60 hover:text-white"
+                        type="button"
+                        onClick={() => handleDeleteEvent(item.id)}
+                      >
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -850,6 +831,8 @@ export default function AthleteReportPage() {
                         getMetricValue(latest?.analysisMetrics, [
                           "Total Time",
                           "Finish Time",
+                          "Total Time (s)",
+                          "Finish Time (s)",
                           "total_time",
                           "total_time_seconds",
                           "totalTime",
@@ -862,6 +845,8 @@ export default function AthleteReportPage() {
                           getMetricValue(latest?.analysisMetrics, [
                             "Total Time",
                             "Finish Time",
+                            "Total Time (s)",
+                            "Finish Time (s)",
                             "20_yard_total_time",
                             "total_time",
                             "total_time_seconds",
@@ -1145,6 +1130,34 @@ export default function AthleteReportPage() {
                   />
                 ) : (
                   <div>{aboutForm.gradYear}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-white/50">
+                  Gender
+                </div>
+                {isEditingAbout ? (
+                  <select
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    name="gender"
+                    value={aboutForm.gender}
+                    onChange={(event) =>
+                      setAboutForm((prev) => ({
+                        ...prev,
+                        gender: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                ) : (
+                  <div>
+                    {aboutForm.gender
+                      ? aboutForm.gender.charAt(0).toUpperCase() +
+                        aboutForm.gender.slice(1)
+                      : "--"}
+                  </div>
                 )}
               </div>
               <div>

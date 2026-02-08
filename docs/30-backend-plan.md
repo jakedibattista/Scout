@@ -22,16 +22,16 @@
 
 - `users`: id, role, email, username, passwordHash, createdAt
 - `scoutProfiles`: userId, username, name, email, sport, program, level,
-  recruitingStates?, gradYearsRecruiting?, positionFocus?
+  genderFocus?, recruitingStates?, gradYearsRecruiting?, positionFocus?
 - `athleteProfiles`: userId, username, name, email, state, sport, position,
-  height, weight, gradYear, highSchoolTeam, goal, clubTeam?, currentOffers?,
+  gender, height, weight, gradYear, highSchoolTeam, goal, clubTeam?, currentOffers?,
   highlightTapeUrl?, socials?, gpa?, relocateStates?
 - `events`: athleteId, eventName, url, summary, createdAt, updatedAt
 - `videos`: athleteId (username), drillType, fileUrl, uploadDate, status,
   analysisStatus, analysisNotes?, analysisMetrics?, retries?
 - `reports`: athleteId, type (scout|coach), summary, strengths, weaknesses,
-  metrics, recommendedLevel, createdAt
-- `savedSearches`: scoutId, query, parsedFilters, createdAt, notifyEmail
+  metrics, createdAt
+- `savedSearches`: scoutId, query, filters, createdAt, notifyEmail
 
 ### Implementation Status (MVP)
 
@@ -57,6 +57,7 @@
 - sport: "lacrosse" | "hockey" | "football"
 - program: string
 - level: "D1" | "D2" | "D3" | "JUCO" | "Club"
+- genderFocus?: "male" | "female" | "both"
 - recruitingStates?: string[]
 - gradYearsRecruiting?: number[]
 - positionFocus?: string[]
@@ -69,6 +70,7 @@
 - email: string
 - state: string
 - sport: "lacrosse" | "hockey" | "football"
+- gender: "male" | "female"
 - position: string
 - height: string
 - weight: string
@@ -113,7 +115,6 @@
 - strengths: string[]
 - weaknesses: string[]
 - metrics: Record<string, string | number>
-- recommendedLevel: "D1" | "D2" | "D3" | "JUCO" | "Club"
 - goalAlignment?: string
 - createdAt: timestamp
 
@@ -121,9 +122,9 @@
 
 - scoutId: string
 - query: string
-- parsedFilters: Record<string, string | number | string[]>
+- filters: Record<string, string | number | string[]>
 - createdAt: timestamp
-- notifyEmail: boolean
+- notifyEmail: boolean (stored preference only in MVP)
 
 ## API Design
 
@@ -146,10 +147,9 @@
 - `POST /api/scout/search/save`: save search for alerts
 - `GET /api/scout/athlete/:id`: athlete profile + videos + reports
 
-### Email Alerts
+### Email Alerts (Future)
 
-- Real emails via SMTP or Gmail API
-- AI-generated message includes athlete link and recommendation reason
+- Not in MVP. We store saved searches + preferences only.
 
 ### Data Flow
 
@@ -170,7 +170,7 @@
 ### Indexing
 
 - Required indexes for `athleteProfiles`: sport, position, state, gradYear
-- Optional indexes for `reports`: recommendedLevel, metrics tags
+- Optional indexes for `reports`: metrics tags
 
 ## Integrations
 

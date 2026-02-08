@@ -1,27 +1,12 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { buildScoutQueryPlan } from "@/lib/gemini";
-
-const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
-const dashBenchmarks = { elite: 2.5, good: 2.7 };
-
-function parseSeconds(value?: string | number | null) {
-  if (typeof value === "number") return value;
-  if (!value) return null;
-  const normalized = String(value).replace(/[^0-9.]/g, "");
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function getMetricValue(
-  metrics: Record<string, string | number> | undefined,
-  keys: string[]
-) {
-  if (!metrics) return null;
-  for (const key of keys) {
-    if (metrics[key] !== undefined) return metrics[key];
-  }
-  return null;
-}
+import {
+  dashBenchmarks,
+  formatSeconds,
+  getMetricValue,
+  parseSeconds,
+  shuttleBenchmarks,
+} from "@/lib/metrics";
 
 function scoreShuttle(totalSeconds: number | null) {
   if (totalSeconds === null) return 0;
@@ -35,13 +20,6 @@ function scoreDash(totalSeconds: number | null) {
   if (totalSeconds < dashBenchmarks.elite) return 2;
   if (totalSeconds <= dashBenchmarks.good) return 1;
   return 0;
-}
-
-function gradeFromScore(score: number) {
-  if (score >= 5) return "A";
-  if (score >= 3) return "B";
-  if (score >= 1) return "C";
-  return "D";
 }
 
 function applyProfileFilters({
@@ -73,6 +51,10 @@ function applyProfileFilters({
     merged.positions = merged.positions.filter((item) =>
       profile.positionFocus?.includes(item)
     );
+  }
+
+  if (merged.positions?.length) {
+    merged.positions = merged.positions.map((item) => normalizePosition(item));
   }
 
   if (!merged.recruitingStates?.length && profile.recruitingStates?.length) {
@@ -116,8 +98,28 @@ function passesPositionFilter(
   positions?: string[]
 ) {
   if (!positions?.length) return true;
-  const position = athlete.position ?? "";
+  const position = normalizePosition(athlete.position ?? "");
   return positions.includes(position);
+}
+
+function passesSportFilter(athlete: { sport?: string }, sport?: string) {
+  if (!sport) return true;
+  return normalizeText(athlete.sport) === normalizeText(sport);
+}
+
+function normalizePosition(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "defender") return "defense";
+  if (normalized === "defence") return "defense";
+  if (normalized === "d pole") return "defense";
+  if (normalized === "face-off") return "faceoff";
+  if (normalized === "fogo") return "faceoff";
+  return normalized;
+}
+
+function normalizeText(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
 }
 
 function parseNumber(value: unknown) {
@@ -201,24 +203,13 @@ export async function POST(request: Request) {
       planFilters: plan.filters ?? {},
     });
 
-    let athleteQuery = adminDb.collection("athleteProfiles");
-    if (filters.sport) {
-      athleteQuery = athleteQuery.where("sport", "==", filters.sport);
-    }
-    if (filters.positions?.length === 1) {
-      athleteQuery = athleteQuery.where("position", "==", filters.positions[0]);
-    }
-    if (filters.positions && filters.positions.length > 1) {
-      athleteQuery = athleteQuery.where(
-        "position",
-        "in",
-        filters.positions.slice(0, 10)
-      );
-    }
-
-    const athleteSnapshot = await athleteQuery.limit(50).get();
+    const athleteSnapshot = await adminDb
+      .collection("athleteProfiles")
+      .limit(50)
+      .get();
     const athletes = athleteSnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((athlete) => passesSportFilter(athlete, filters.sport))
       .filter((athlete) =>
         passesStateFilter(athlete, filters.recruitingStates)
       )
@@ -312,28 +303,43 @@ export async function POST(request: Request) {
             "repetitions",
             "Repetitions",
             "reps",
+            "total_reps_60s",
+            "total_reps",
+            "rep_count",
+            "count",
           ])
         );
         const wallBallScore = wallBallReps ?? 0;
         const gpa = parseNumber(athlete.gpa);
         const gradYear = parseNumber(athlete.gradYear);
-        const position = athlete.position ?? "";
-        const state = athlete.state ?? "";
-        const parts = [
-          athlete.name ?? athleteId,
-          state ? `${state} ${position}`.trim() : position,
-          gpa ? `GPA ${gpa.toFixed(1)}` : null,
-          gradYear ? `Class of ${gradYear}` : null,
-        ].filter(Boolean);
-        const reason = parts.length ? parts.join(" · ") : athleteId;
+        const position = String(athlete.position ?? "").trim() || "athlete";
+        const state = String(athlete.state ?? "").trim();
+        const sport = String(athlete.sport ?? "").trim();
+        const dashLabel =
+          plan.sort?.by === "speed_score" && dashTime !== null
+            ? `20-yard: ${formatSeconds(dashTime)}`
+            : null;
+        const shuttleLabel =
+          plan.sort?.by === "speed_score" && shuttleTime !== null
+            ? `Shuttle: ${formatSeconds(shuttleTime)}`
+            : null;
+        const wallBallLabel =
+          plan.sort?.by === "wall_ball_score" && wallBallReps !== null
+            ? `Wall ball: ${wallBallReps} reps (60s)`
+            : null;
+        const summaryParts = [wallBallLabel, dashLabel, shuttleLabel].filter(
+          Boolean
+        );
+        const summary = summaryParts.length
+          ? summaryParts.join(" · ")
+          : "Profile match.";
 
         return {
           id: athleteId,
           name: athlete.name ?? athleteId,
           speedScore,
           wallBallScore,
-          grade: gradeFromScore(speedScore),
-          reason,
+          summary,
         };
       })
       .sort((a, b) => {

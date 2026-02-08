@@ -1,5 +1,6 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
+import { withRetry } from "@/lib/gemini/retry";
 
 const defaultModel = "gemini-3-flash-preview";
 
@@ -21,43 +22,8 @@ type CoachingOutput = {
   trend: "improving" | "declining" | "steady" | "unknown";
 };
 
-function isRetryable(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("ECONNRESET") ||
-    message.includes("ETIMEDOUT") ||
-    message.includes("socket hang up") ||
-    message.includes("fetch failed") ||
-    message.includes("EAI_AGAIN") ||
-    message.includes("ECONNREFUSED") ||
-    message.includes("503") ||
-    message.includes("504")
-  );
-}
-
-async function withRetry<T>(label: string, fn: () => Promise<T>) {
-  let attempt = 0;
-  let lastError: unknown;
-
-  while (attempt < 3) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      attempt += 1;
-      if (!isRetryable(error) || attempt >= 3) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${label} failed: ${message}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
-    }
-  }
-
-  throw lastError;
-}
-
 function buildPrompt(input: CoachingInput) {
-  return `You are a high school coach preparing an athlete for college recruiting. Use the athlete profile, combine drill results, and competition summaries to write coaching guidance. Write in an active coaching tone addressed directly to the athlete (second person). Make it feel like the athlete is reading it ("you", "your", "we will"). Reference the athlete's stated goal and make concrete recommendations to improve. Align your tone with the drill grades: if the metrics are "Needs work" or below the good benchmark, do not describe them as elite or dominant. Only use facts and numbers present in the input data. If a metric is missing, do not guess or invent it.
+  return `You are a high school coach preparing an athlete for college recruiting. Use the athlete profile, combine drill results, and competition summaries to write coaching guidance. Write in an active coaching tone addressed directly to the athlete (second person). Make it feel like the athlete is reading it ("you", "your", "we will"). Reference the athlete's stated goal and make concrete recommendations to improve. Align your tone with the drill grades: if the metrics are "Needs work" or below the good benchmark, do not describe them as elite or dominant. Use ONLY the athlete's provided name (do not guess, expand, or "lookup" names). Only use facts and numbers present in the input data. If a metric or event is missing, do not guess or invent it.
 
 Athlete profile:
 ${JSON.stringify(input.athleteProfile)}
@@ -78,6 +44,7 @@ Return JSON:
 
 Rules:
 - Summary should be 3-5 sentences, second person, action-oriented.
+- The summary must explicitly mention the athlete's stated goal if present.
 - Focus areas should be 2-4 concise bullets.
 - Next steps should be actionable training items (2-4 items).
 - Consider changes in recent drills/events to assess trend.`;

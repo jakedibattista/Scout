@@ -127,6 +127,19 @@ export default function ScoutProfilePage() {
               </select>
             </label>
             <label className="flex flex-col gap-2">
+              Recruiting gender
+              <select
+                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                name="genderFocus"
+                required
+                defaultValue="male"
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="both">Both</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-2">
               School / Program
               <input
                 className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"

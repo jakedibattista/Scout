@@ -1,5 +1,6 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
+import { withRetry, withTimeout } from "@/lib/gemini/retry";
 
 const defaultModel = "gemini-3-flash-preview";
 
@@ -30,50 +31,6 @@ type ScoutQueryPlan = {
   notes?: string;
 };
 
-function isRetryable(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("ECONNRESET") ||
-    message.includes("ETIMEDOUT") ||
-    message.includes("socket hang up") ||
-    message.includes("fetch failed") ||
-    message.includes("EAI_AGAIN") ||
-    message.includes("ECONNREFUSED") ||
-    message.includes("503") ||
-    message.includes("504") ||
-    message.includes("timeout")
-  );
-}
-
-async function withRetry<T>(label: string, fn: () => Promise<T>) {
-  let attempt = 0;
-  let lastError: unknown;
-
-  while (attempt < 3) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      attempt += 1;
-      if (!isRetryable(error) || attempt >= 3) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${label} failed: ${message}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
-    }
-  }
-
-  throw lastError;
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number) {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Scout query timeout.")), ms)
-    ),
-  ]);
-}
 
 function buildPrompt(profile: ScoutProfile, query: string) {
   return `You are a scout search parser. You read a scout's profile and a natural-language query, then return a JSON plan.

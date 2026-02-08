@@ -34,7 +34,9 @@ Return ONLY valid JSON as an array:
 Rules:
 - Only use events supported by the provided search results.
 - Do not invent events or stats.
-- Summaries should be 1-2 concise sentences.
+- Summaries should be 1-2 concise sentences and include a source link in the summary text.
+- The athlete's name (or last name) must appear in the source context before using an event.
+- If a different graduation year is mentioned, skip that event.
 - If results are not clearly about the athlete, return an empty array.`;
 }
 

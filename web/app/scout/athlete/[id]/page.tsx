@@ -4,6 +4,15 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import PageShell from "../../../_components/PageShell";
+import {
+  formatCount,
+  formatSeconds,
+  getDashGrade,
+  getMetricValue,
+  getShuttleGrade,
+  getWallBallGrade,
+  parseSeconds,
+} from "@/lib/metrics";
 
 type VideoItem = {
   id: string;
@@ -32,7 +41,6 @@ type AthleteResponse = {
     summary: string;
     strengths?: string[];
     weaknesses?: string[];
-    recommendedLevel?: string;
     createdAt?: string | null;
   }>;
   videos?: VideoItem[];
@@ -44,10 +52,6 @@ const drillLabels: Record<string, string> = {
   dash_20: "20-yard dash",
   shuttle_5_10_5: "5-10-5 shuttle",
 };
-
-const shuttleBenchmarks = { elite: 4.0, good: 4.5 };
-const dashBenchmarks = { elite: 2.5, good: 2.7 };
-const wallBallBenchmarks = { elite: 80, good: 60 };
 
 export default function AthleteDetailPage() {
   const params = useParams();
@@ -107,68 +111,6 @@ export default function AthleteDetailPage() {
   const athleteName = athlete?.name ?? decodeURIComponent(athleteId);
   const drillKeys = ["wall_ball", "dash_20", "shuttle_5_10_5"] as const;
 
-  function parseSeconds(value?: string | number | null) {
-    if (typeof value === "number") return value;
-    if (!value) return null;
-    const normalized = String(value).replace(/[^0-9.]/g, "");
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  function formatSeconds(value: number | null) {
-    if (value === null) return "—";
-    return `${value.toFixed(2)}s`;
-  }
-
-  function formatCount(value: number | null) {
-    if (value === null) return "—";
-    return `${Math.round(value)}`;
-  }
-
-  function getMetricValue(
-    metrics: Record<string, string | number> | undefined,
-    keys: string[]
-  ) {
-    if (!metrics) return null;
-    for (const key of keys) {
-      if (metrics[key] !== undefined) return metrics[key];
-    }
-    return null;
-  }
-
-  function getShuttleGrade(totalSeconds: number | null) {
-    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
-    if (totalSeconds < shuttleBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (totalSeconds <= shuttleBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getDashGrade(totalSeconds: number | null) {
-    if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
-    if (totalSeconds < dashBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (totalSeconds <= dashBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
-  function getWallBallGrade(reps: number | null) {
-    if (reps === null) return { label: "Pending", color: "text-white/50" };
-    if (reps >= wallBallBenchmarks.elite) {
-      return { label: "Elite", color: "text-emerald-300" };
-    }
-    if (reps >= wallBallBenchmarks.good) {
-      return { label: "Good", color: "text-yellow-300" };
-    }
-    return { label: "Needs work", color: "text-red-300" };
-  }
-
   function getLatestByDrill(drillType: string) {
     const list = videos.filter((video) => video.drillType === drillType);
     return list.sort((a, b) => {
@@ -213,7 +155,10 @@ export default function AthleteDetailPage() {
                 : "Speed, quick decision-making"}
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
-              Recommended level: {scoutReport?.recommendedLevel ?? "D1-ready"}
+              Weaknesses:{" "}
+              {Array.isArray(scoutReport?.weaknesses)
+                ? scoutReport?.weaknesses.join(", ")
+                : "Needs more consistency."}
             </div>
           </div>
         </div>
@@ -238,6 +183,8 @@ export default function AthleteDetailPage() {
                         getMetricValue(latest?.analysisMetrics, [
                           "Total Time",
                           "Finish Time",
+                          "Total Time (s)",
+                          "Finish Time (s)",
                           "total_time",
                           "total_time_seconds",
                           "totalTime",
@@ -250,6 +197,8 @@ export default function AthleteDetailPage() {
                           getMetricValue(latest?.analysisMetrics, [
                             "Total Time",
                             "Finish Time",
+                            "Total Time (s)",
+                            "Finish Time (s)",
                             "20_yard_total_time",
                             "total_time",
                             "total_time_seconds",

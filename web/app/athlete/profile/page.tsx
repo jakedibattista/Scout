@@ -203,6 +203,18 @@ export default function AthleteProfilePage() {
               </select>
             </label>
             <label className="flex flex-col gap-2">
+              Gender
+              <select
+                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                name="gender"
+                required
+                defaultValue="male"
+              >
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-2">
               Position
               <select
                 className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"

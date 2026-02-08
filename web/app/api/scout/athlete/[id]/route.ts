@@ -85,7 +85,6 @@ export async function GET(request: Request, context: RouteContext) {
         summary: data.summary ?? "",
         strengths: data.strengths ?? [],
         weaknesses: data.weaknesses ?? [],
-        recommendedLevel: data.recommendedLevel ?? data.metrics?.recommendedLevel,
         createdAt:
           typeof data.createdAt?.toDate === "function"
             ? data.createdAt.toDate().toISOString()

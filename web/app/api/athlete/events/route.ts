@@ -121,3 +121,33 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const payload = await request.json();
+    const id = String(payload?.id ?? "");
+    if (!id) {
+      return Response.json(
+        { ok: false, error: "Missing event id." },
+        { status: 400 }
+      );
+    }
+
+    await adminDb.collection("events").doc(id).delete();
+    if (payload?.athleteId) {
+      void buildAndStoreCoachingReport(String(payload.athleteId)).catch(
+        (error) => console.error("Coaching report failed:", error)
+      );
+      void buildAndStoreScoutReport(String(payload.athleteId)).catch((error) =>
+        console.error("Scout report failed:", error)
+      );
+    }
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    return Response.json(
+      { ok: false, error: "Unable to delete event." },
+      { status: 500 }
+    );
+  }
+}

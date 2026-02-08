@@ -20,13 +20,14 @@
 - Basic login with username/password
 - Usernames are unique across the platform (used as athlete IDs).
 - Profile creation for both roles
+- Gender selection for athletes and scouts (male/female; scouts can select both)
 - Athlete video upload and management
 - Scout view can access athlete videos by default.
 - AI-based video assessment and feedback for athletes
 - Research agent to auto-populate competitions from public sources on profile creation
 - Athlete can manually re-run research to refresh competitions
 - Scout search and filtering (NL input parsed to filters)
-- Scout search shows a letter grade and short rationale per result
+- Scout search shows a short dynamic summary per result (based on query intent)
 - Sport selection includes lacrosse (active) and hockey/football (coming soon)
 - Athlete goal captured and used in coaching guidance
 - Coaching guidance is direct to athlete and action-oriented
@@ -43,11 +44,12 @@
 ## Data Requirements
 
 - Firestore document storage for users, profiles, reports, and saved searches
+- Store athlete gender and scout recruiting gender preferences
 - Store videos in GCS with Firestore metadata (drill, URL, status, analysis)
 - Store AI reports (scouting, coaching) per athlete
 - Store event entries (event name, link, summary) from athlete or research agent
 - Allow athletes to add event links from their profile
-- Store saved scout searches for email alerts (SMTP/Gmail API)
+- Store saved scout searches (no email/push notifications in MVP)
 
 ## Reporting and Analytics
 

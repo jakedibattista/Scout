@@ -15,12 +15,22 @@ export async function POST(request: Request) {
       );
     }
 
-    await adminDb.collection("savedSearches").add({
-      scoutId: scoutUsername,
-      query,
-      notifyEmail: Boolean(payload?.notifyEmail),
-      createdAt: adminFieldValue.serverTimestamp(),
-    });
+    const existing = await adminDb
+      .collection("savedSearches")
+      .where("scoutId", "==", scoutUsername)
+      .where("query", "==", query)
+      .limit(1)
+      .get();
+
+    if (existing.empty) {
+      await adminDb.collection("savedSearches").add({
+        scoutId: scoutUsername,
+        query,
+        notifyEmail: Boolean(payload?.notifyEmail),
+        filters: payload?.filters ?? null,
+        createdAt: adminFieldValue.serverTimestamp(),
+      });
+    }
 
     return Response.json({ ok: true });
   } catch (error) {
@@ -30,18 +40,35 @@ export async function POST(request: Request) {
     );
   }
 }
-export async function POST(request: Request) {
+
+export async function DELETE(request: Request) {
   try {
     const payload = await request.json();
-    return Response.json({
-      ok: true,
-      savedSearchId: "search_placeholder",
-      payload,
-    });
+    const id = String(payload?.id ?? "").trim();
+    const scoutUsername = String(payload?.scoutUsername ?? "");
+
+    if (!id || !scoutUsername) {
+      return Response.json(
+        { ok: false, error: "Missing search id or scout username." },
+        { status: 400 }
+      );
+    }
+
+    const docRef = adminDb.collection("savedSearches").doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.scoutId !== scoutUsername) {
+      return Response.json(
+        { ok: false, error: "Search not found." },
+        { status: 404 }
+      );
+    }
+
+    await docRef.delete();
+    return Response.json({ ok: true });
   } catch (error) {
     return Response.json(
-      { ok: false, error: "Invalid JSON payload" },
-      { status: 400 }
+      { ok: false, error: "Unable to remove search." },
+      { status: 500 }
     );
   }
 }

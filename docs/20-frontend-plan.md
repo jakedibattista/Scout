@@ -31,8 +31,8 @@
 - Purpose: complete scout profile and preferences
 - Primary actions: save profile
 - Key fields: username, password, contact info, sport, school/program, program
-  level, recruiting states (dropdown + list), positions recruiting (dropdown +
-  list)
+  level, recruiting gender (male/female/both), recruiting states (dropdown + list),
+  positions recruiting (dropdown + list)
 - UI states: saved confirmation; error on save
 
 ### Scout About Me
@@ -45,15 +45,15 @@
 
 - Purpose: set filters and run search
 - Primary actions: apply filters, view About Me tab, log out
-- Key elements: search bar, email alert button after search, actively recruiting list
+- Key elements: search bar, saved search button after search, actively recruiting list
 - UI states: loading results; no matches; error retrieving results
 
 ### Scout Results
 
 - Purpose: browse athlete list
 - Primary actions: view profile, contact
-- Key elements: athlete rows with scouting report summary and actions
-- Search rows show a letter grade plus a short rationale (state, position, GPA, grad year)
+- Key elements: athlete rows with dynamic scouting summary and actions
+- Search rows show a short summary aligned to the query intent (e.g., speed or wall ball)
 - UI states: pagination/loading more; empty; error
 
 ### Athlete Detail (Scout View)
@@ -69,9 +69,9 @@
 - Purpose: complete athlete profile
 - Primary actions: save profile, proceed to upload
 - Key fields: username, password, high school team (required), goal (required),
-  sport-based position dropdown, bio, stats, contact, coach info (optional),
-  socials (Instagram, X, TikTok, YouTube handles), club team (optional), current
-  offers list (optional), highlight tape URL (optional)
+  gender, sport-based position dropdown, bio, stats, contact, coach info
+  (optional), socials (Instagram, X, TikTok, YouTube handles), club team
+  (optional), current offers list (optional), highlight tape URL (optional)
 - UI states: saved confirmation; error on save
 
 ### Athlete Video Upload

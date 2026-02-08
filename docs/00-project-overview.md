@@ -51,6 +51,7 @@ athletes they might otherwise miss.
 - Coaching guidance is second-person and action-oriented (athlete-facing).
 - Scout reports are conservative and avoid inflated praise.
 - Athlete research uses the Gemini Google Search tool with manual re-run.
+- Gender selection exists, but MVP workflows are validated against male use cases.
 
 ## Stakeholders
 
