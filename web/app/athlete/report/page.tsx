@@ -757,8 +757,8 @@ export default function AthleteReportPage() {
               <div className="grid grid-cols-12 gap-4 border-b border-white/10 px-4 py-3 text-xs uppercase tracking-wider text-white/50">
                 <span className="col-span-3">Event name</span>
                 <span className="col-span-4">Event link</span>
-                <span className="col-span-4">Summary</span>
-                <span className="col-span-1 text-right">Actions</span>
+                <span className="col-span-3">Summary</span>
+                <span className="col-span-2 text-right">Actions</span>
               </div>
               {events.length ? (
                 events.map((item) => (
@@ -770,15 +770,17 @@ export default function AthleteReportPage() {
                       <span className="text-white">{item.eventName}</span>
                     </div>
                     <a
-                      className="col-span-4 text-yellow-300 hover:text-yellow-200 break-words"
+                      className="col-span-4 break-words text-yellow-300 hover:text-yellow-200"
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
                     >
                       {item.url}
                     </a>
-                    <span className="col-span-4">{item.summary || "Summary pending."}</span>
-                    <div className="col-span-1 flex flex-col items-end gap-2">
+                    <span className="col-span-3 break-words">
+                      {item.summary || "Summary pending."}
+                    </span>
+                    <div className="col-span-2 flex flex-col items-end gap-2">
                       <button
                         className="text-xs uppercase tracking-wider text-yellow-300 hover:text-yellow-200"
                         type="button"

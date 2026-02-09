@@ -2,6 +2,8 @@ import { createHash } from "crypto";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { buildAndStoreResearchEvents } from "@/lib/athleteResearch";
+import { buildAndStoreCoachingReport } from "@/lib/coachingReport";
+import { buildAndStoreScoutReport } from "@/lib/scoutReport";
 
 export async function POST(request: Request) {
   try {
@@ -69,6 +71,12 @@ export async function POST(request: Request) {
         sport: String(profile.sport ?? ""),
       }).catch((error) => {
         console.error("Research agent failed:", error);
+      });
+      void buildAndStoreCoachingReport(String(username)).catch((error) => {
+        console.error("Coaching report failed:", error);
+      });
+      void buildAndStoreScoutReport(String(username)).catch((error) => {
+        console.error("Scout report failed:", error);
       });
     }
 
