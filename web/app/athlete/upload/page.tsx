@@ -34,11 +34,14 @@ const drills: {
     key: "wall_ball",
     title: "Drill 1: Wall ball",
     label: "wall ball",
+    howToUrl: "https://www.youtube.com/shorts/vvCP6fHfawo?si=f3rHXOghNcbJS_pX",
   },
   {
     key: "dash_20",
     title: "Drill 2: 20-yard dash",
     label: "20-yard dash",
+    howToUrl:
+      "https://youtube.com/watch?si=LQdDMc2QwgJGpFjC&v=bC5aKc-83OU&feature=youtu.be",
   },
   {
     key: "shuttle_5_10_5",
