@@ -26,12 +26,11 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!response.ok) {
-        throw new Error("Login failed.");
-      }
-      const data = await response.json();
-      if (!data?.user?.role) {
-        throw new Error("Login failed.");
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.user?.role) {
+        throw new Error(
+          data?.error ?? "Login failed. Check your credentials and try again."
+        );
       }
       if (typeof window !== "undefined") {
         if (data.user.role === "athlete") {
@@ -50,9 +49,11 @@ export default function LoginPage() {
       } else {
         router.push("/");
       }
-    } catch {
+    } catch (error) {
       setStatus("error");
-      setMessage("Login failed. Try again.");
+      setMessage(
+        error instanceof Error ? error.message : "Login failed. Try again."
+      );
     }
   }
 
@@ -88,9 +89,6 @@ export default function LoginPage() {
         >
           {status === "saving" ? "Logging in..." : "Log in"}
         </button>
-        <Link className="text-sm text-white/70 underline" href="/forgot-password">
-          Forgot password?
-        </Link>
         {message ? (
           <p
             className={`text-sm ${
@@ -100,6 +98,12 @@ export default function LoginPage() {
             {message}
           </p>
         ) : null}
+        <Link
+          className={`text-sm underline ${status === "error" ? "text-yellow-400" : "text-white/70"}`}
+          href="/forgot-password"
+        >
+          Forgot password?
+        </Link>
       </form>
     </PageShell>
   );

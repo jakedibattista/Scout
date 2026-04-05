@@ -43,7 +43,7 @@ export async function POST(request: Request) {
         const existingData = existingUser.data();
         if (existingData?.passwordHash !== passwordHash) {
           return Response.json(
-            { ok: false, error: "Username is already taken." },
+            { ok: false, error: "This username already exists. If this is your account, go to the login page and use your original password." },
             { status: 409 }
           );
         }
