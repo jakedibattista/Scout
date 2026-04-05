@@ -1,43 +1,50 @@
 import { createHash } from "crypto";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 export async function POST(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    const { identifier, password } = await request.json();
-    if (!identifier || !password) {
-      return Response.json(
-        { ok: false, error: "Missing credentials." },
-        { status: 400 }
-      );
-    }
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return Response.json(
+      { ok: false, error: "Invalid JSON payload." },
+      { status: 400 }
+    );
+  }
 
-    let userDoc = null;
+  const { identifier, password } = body;
+  if (!identifier || !password) {
+    return Response.json(
+      { ok: false, error: "Missing credentials." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    let data: FirebaseFirestore.DocumentData | undefined;
+
     if (String(identifier).includes("@")) {
-      const snapshot = await getDocs(
-        query(collection(db, "users"), where("email", "==", identifier))
-      );
-      userDoc = snapshot.docs[0] ?? null;
+      const snapshot = await adminDb
+        .collection("users")
+        .where("email", "==", String(identifier))
+        .limit(1)
+        .get();
+      data = snapshot.docs[0]?.data();
     } else {
-      const snapshot = await getDoc(doc(db, "users", String(identifier)));
-      userDoc = snapshot.exists() ? snapshot : null;
+      const snapshot = await adminDb
+        .collection("users")
+        .doc(String(identifier))
+        .get();
+      data = snapshot.exists ? snapshot.data() : undefined;
     }
 
-    if (!userDoc) {
+    if (!data) {
       return Response.json(
         { ok: false, error: "Invalid credentials." },
         { status: 401 }
       );
     }
 
-    const data = userDoc.data();
     const passwordHash = createHash("sha256")
       .update(String(password))
       .digest("hex");
@@ -54,9 +61,10 @@ export async function POST(request: Request) {
       user: { username: data.username, role: data.role, email: data.email },
     });
   } catch (error) {
+    console.error("POST /api/auth/login failed", error);
     return Response.json(
-      { ok: false, error: "Invalid JSON payload" },
-      { status: 400 }
+      { ok: false, error: "Unable to process login right now." },
+      { status: 500 }
     );
   }
 }

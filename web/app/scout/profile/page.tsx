@@ -39,8 +39,11 @@ export default function ScoutProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error("Failed to save profile.");
+        throw new Error(
+          data?.error ? String(data.error) : "Failed to save profile."
+        );
       }
       const username = String(payload.username ?? "");
       if (typeof window !== "undefined" && username) {
@@ -51,7 +54,9 @@ export default function ScoutProfilePage() {
       router.push("/scout/search");
     } catch (error) {
       setStatus("error");
-      setMessage("Something went wrong. Try again.");
+      setMessage(
+        error instanceof Error ? error.message : "Something went wrong. Try again."
+      );
     }
   }
 

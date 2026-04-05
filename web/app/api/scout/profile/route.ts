@@ -1,10 +1,18 @@
 import { createHash } from "crypto";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb, adminFieldValue } from "@/lib/firebaseAdmin";
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json();
+    let payload: Record<string, unknown>;
+    try {
+      payload = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return Response.json(
+        { ok: false, error: "Invalid JSON payload." },
+        { status: 400 }
+      );
+    }
+
     const { username, password, ...profile } = payload;
 
     if (!username) {
@@ -14,9 +22,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const userRef = doc(db, "users", String(username));
-    const existingUser = await getDoc(userRef);
-    if (!password && !existingUser.exists()) {
+    const userRef = adminDb.collection("users").doc(String(username));
+    const existingUser = await userRef.get();
+    if (!password && !existingUser.exists) {
       return Response.json(
         { ok: false, error: "Password required to create account." },
         { status: 400 }
@@ -28,7 +36,7 @@ export async function POST(request: Request) {
       passwordHash = createHash("sha256")
         .update(String(password))
         .digest("hex");
-      if (existingUser.exists()) {
+      if (existingUser.exists) {
         const existingData = existingUser.data();
         if (existingData?.passwordHash !== passwordHash) {
           return Response.json(
@@ -39,33 +47,35 @@ export async function POST(request: Request) {
       }
     }
 
-    await setDoc(
-      userRef,
+    await userRef.set(
       {
         username: String(username),
         email: String(profile.email ?? ""),
         role: "scout",
         ...(passwordHash ? { passwordHash } : {}),
-        createdAt: serverTimestamp(),
+        createdAt: adminFieldValue.serverTimestamp(),
       },
       { merge: true }
     );
 
-    await setDoc(
-      doc(db, "scoutProfiles", String(username)),
-      {
-        ...profile,
-        username: String(username),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await adminDb
+      .collection("scoutProfiles")
+      .doc(String(username))
+      .set(
+        {
+          ...profile,
+          username: String(username),
+          updatedAt: adminFieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
 
     return Response.json({ ok: true });
   } catch (error) {
+    console.error("POST /api/scout/profile failed", error);
     return Response.json(
-      { ok: false, error: "Invalid JSON payload" },
-      { status: 400 }
+      { ok: false, error: "Unable to save scout profile right now." },
+      { status: 500 }
     );
   }
 }
