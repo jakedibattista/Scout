@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
 import PageShell from "../_components/PageShell";
 
 type FormStatus = "idle" | "saving" | "saved" | "error";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token") ?? "", [searchParams]);
   const [status, setStatus] = useState<FormStatus>("idle");
@@ -59,53 +59,61 @@ export default function ResetPasswordPage() {
   }
 
   return (
+    <form className="grid gap-6 md:max-w-xl" onSubmit={handleSubmit}>
+      <label className="flex flex-col gap-2 text-sm text-white/70">
+        New Password
+        <input
+          className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+          name="password"
+          type="password"
+          minLength={8}
+          placeholder="At least 8 characters"
+          required
+        />
+      </label>
+      <label className="flex flex-col gap-2 text-sm text-white/70">
+        Confirm New Password
+        <input
+          className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+          name="confirmPassword"
+          type="password"
+          minLength={8}
+          placeholder="Re-enter your password"
+          required
+        />
+      </label>
+      <button
+        className="w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black md:w-fit"
+        type="submit"
+        disabled={status === "saving"}
+      >
+        {status === "saving" ? "Updating..." : "Update password"}
+      </button>
+      <Link className="text-sm text-white/70 underline" href="/login">
+        Back to log in
+      </Link>
+      {message ? (
+        <p
+          className={`text-sm ${
+            status === "error" ? "text-red-300" : "text-white/70"
+          }`}
+        >
+          {message}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
     <PageShell
       title="Reset Password"
       subtitle="Choose a new password to regain access to your account."
     >
-      <form className="grid gap-6 md:max-w-xl" onSubmit={handleSubmit}>
-        <label className="flex flex-col gap-2 text-sm text-white/70">
-          New Password
-          <input
-            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-            name="password"
-            type="password"
-            minLength={8}
-            placeholder="At least 8 characters"
-            required
-          />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-white/70">
-          Confirm New Password
-          <input
-            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-            name="confirmPassword"
-            type="password"
-            minLength={8}
-            placeholder="Re-enter your password"
-            required
-          />
-        </label>
-        <button
-          className="w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black md:w-fit"
-          type="submit"
-          disabled={status === "saving"}
-        >
-          {status === "saving" ? "Updating..." : "Update password"}
-        </button>
-        <Link className="text-sm text-white/70 underline" href="/login">
-          Back to log in
-        </Link>
-        {message ? (
-          <p
-            className={`text-sm ${
-              status === "error" ? "text-red-300" : "text-white/70"
-            }`}
-          >
-            {message}
-          </p>
-        ) : null}
-      </form>
+      <Suspense fallback={<div className="text-white/50 text-sm">Loading...</div>}>
+        <ResetPasswordForm />
+      </Suspense>
     </PageShell>
   );
 }
