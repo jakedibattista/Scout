@@ -99,7 +99,7 @@ export default function LoginPage() {
           </p>
         ) : null}
         <Link
-          className={`text-sm underline ${status === "error" ? "text-yellow-400" : "text-white/70"}`}
+          className={`text-sm underline ${status === "error" ? "text-accent" : "text-muted"}`}
           href="/forgot-password"
         >
           Forgot password?

@@ -60,10 +60,10 @@ function ResetPasswordForm() {
 
   return (
     <form className="grid gap-6 md:max-w-xl" onSubmit={handleSubmit}>
-      <label className="flex flex-col gap-2 text-sm text-white/70">
-        New Password
+      <label className="flex flex-col gap-2 text-sm text-muted">
+        New password
         <input
-          className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+          className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
           name="password"
           type="password"
           minLength={8}
@@ -71,10 +71,10 @@ function ResetPasswordForm() {
           required
         />
       </label>
-      <label className="flex flex-col gap-2 text-sm text-white/70">
-        Confirm New Password
+      <label className="flex flex-col gap-2 text-sm text-muted">
+        Confirm new password
         <input
-          className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+          className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
           name="confirmPassword"
           type="password"
           minLength={8}
@@ -83,19 +83,19 @@ function ResetPasswordForm() {
         />
       </label>
       <button
-        className="w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black md:w-fit"
+        className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-soft md:w-fit"
         type="submit"
         disabled={status === "saving"}
       >
         {status === "saving" ? "Updating..." : "Update password"}
       </button>
-      <Link className="text-sm text-white/70 underline" href="/login">
+      <Link className="text-sm text-muted underline" href="/login">
         Back to log in
       </Link>
       {message ? (
         <p
           className={`text-sm ${
-            status === "error" ? "text-red-300" : "text-white/70"
+            status === "error" ? "text-danger" : "text-muted"
           }`}
         >
           {message}
@@ -108,10 +108,10 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <PageShell
-      title="Reset Password"
+      title="Reset password"
       subtitle="Choose a new password to regain access to your account."
     >
-      <Suspense fallback={<div className="text-white/50 text-sm">Loading...</div>}>
+      <Suspense fallback={<div className="text-faint text-sm">Loading...</div>}>
         <ResetPasswordForm />
       </Suspense>
     </PageShell>
