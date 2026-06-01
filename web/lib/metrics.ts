@@ -32,34 +32,34 @@ export function getMetricValue(
 }
 
 export function getShuttleGrade(totalSeconds: number | null) {
-  if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+  if (totalSeconds === null) return { label: "Pending", color: "text-faint" };
   if (totalSeconds < shuttleBenchmarks.elite) {
-    return { label: "Elite", color: "text-emerald-300" };
+    return { label: "Elite", color: "text-success" };
   }
   if (totalSeconds <= shuttleBenchmarks.good) {
-    return { label: "Good", color: "text-yellow-300" };
+    return { label: "Good", color: "text-accent" };
   }
-  return { label: "Needs work", color: "text-red-300" };
+  return { label: "Needs work", color: "text-danger" };
 }
 
 export function getDashGrade(totalSeconds: number | null) {
-  if (totalSeconds === null) return { label: "Pending", color: "text-white/50" };
+  if (totalSeconds === null) return { label: "Pending", color: "text-faint" };
   if (totalSeconds < dashBenchmarks.elite) {
-    return { label: "Elite", color: "text-emerald-300" };
+    return { label: "Elite", color: "text-success" };
   }
   if (totalSeconds <= dashBenchmarks.good) {
-    return { label: "Good", color: "text-yellow-300" };
+    return { label: "Good", color: "text-accent" };
   }
-  return { label: "Needs work", color: "text-red-300" };
+  return { label: "Needs work", color: "text-danger" };
 }
 
 export function getWallBallGrade(reps: number | null) {
-  if (reps === null) return { label: "Pending", color: "text-white/50" };
+  if (reps === null) return { label: "Pending", color: "text-faint" };
   if (reps >= wallBallBenchmarks.elite) {
-    return { label: "Elite", color: "text-emerald-300" };
+    return { label: "Elite", color: "text-success" };
   }
   if (reps >= wallBallBenchmarks.good) {
-    return { label: "Good", color: "text-yellow-300" };
+    return { label: "Good", color: "text-accent" };
   }
-  return { label: "Needs work", color: "text-red-300" };
+  return { label: "Needs work", color: "text-danger" };
 }

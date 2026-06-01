@@ -66,13 +66,13 @@ export default function ScoutProfilePage() {
       subtitle="Create your scouting profile. For best accuracy in athlete searches, fill out every field."
     >
       <form className="grid gap-6 md:grid-cols-2" onSubmit={handleSubmit}>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="font-display text-xl">Required</h2>
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl font-semibold">Required</h2>
           <div className="mt-4 grid gap-4 text-sm">
             <label className="flex flex-col gap-2">
               Name
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="name"
                 placeholder="Scout name"
                 required
@@ -81,7 +81,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               Username
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="username"
                 placeholder="scoutname"
                 required
@@ -90,7 +90,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               Email
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="email"
                 type="email"
                 placeholder="name@school.edu"
@@ -100,7 +100,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               Password
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="password"
                 type="password"
                 placeholder="Create a password"
@@ -110,7 +110,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               Sport
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="sport"
                 required
                 defaultValue="lacrosse"
@@ -134,7 +134,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               Recruiting gender
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="genderFocus"
                 required
                 defaultValue="male"
@@ -147,7 +147,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               School / Program
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="program"
                 placeholder="University / Club"
                 required
@@ -156,7 +156,7 @@ export default function ScoutProfilePage() {
             <label className="flex flex-col gap-2">
               Program level
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="level"
                 required
                 defaultValue="D1"
@@ -170,20 +170,20 @@ export default function ScoutProfilePage() {
             </label>
           </div>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="font-display text-xl">Optional</h2>
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl font-semibold">Optional</h2>
           <div className="mt-4 grid gap-4 text-sm">
             <StateChecklist
               name="recruitingStates"
               label="Recruiting states"
             />
             <div className="flex flex-col gap-3">
-              <div className="text-xs uppercase tracking-wider text-white/50">
+              <div className="text-sm font-medium text-faint">
                 Graduation years recruiting
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <select
-                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                   value={pendingGradYear}
                   onChange={(event) =>
                     setPendingGradYear(Number(event.target.value))
@@ -198,7 +198,7 @@ export default function ScoutProfilePage() {
                   )}
                 </select>
                 <button
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                   type="button"
                   onClick={() => {
                     if (selectedGradYears.includes(pendingGradYear)) return;
@@ -212,11 +212,11 @@ export default function ScoutProfilePage() {
                 </button>
               </div>
               {selectedGradYears.length ? (
-                <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                <div className="flex flex-wrap gap-2 text-sm text-muted">
                   {selectedGradYears.map((year) => (
                     <div
                       key={year}
-                      className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                      className="flex items-center gap-2 rounded-lg border border-line px-3 py-1"
                     >
                       <input
                         type="hidden"
@@ -225,7 +225,7 @@ export default function ScoutProfilePage() {
                       />
                       <span>{year}</span>
                       <button
-                        className="text-white/50 hover:text-white"
+                        className="text-faint transition hover:text-ink"
                         type="button"
                         onClick={() =>
                           setSelectedGradYears((prev) =>
@@ -239,18 +239,18 @@ export default function ScoutProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-white/50">
+                <p className="text-sm text-faint">
                   No years selected yet.
                 </p>
               )}
             </div>
             <div className="flex flex-col gap-3">
-              <div className="text-xs uppercase tracking-wider text-white/50">
+              <div className="text-sm font-medium text-faint">
                 Positions recruiting
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <select
-                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                   value={pendingPosition}
                   onChange={(event) => setPendingPosition(event.target.value)}
                 >
@@ -261,7 +261,7 @@ export default function ScoutProfilePage() {
                   ))}
                 </select>
                 <button
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                   type="button"
                   onClick={() => {
                     if (!pendingPosition) return;
@@ -272,7 +272,7 @@ export default function ScoutProfilePage() {
                   Add position
                 </button>
                 <button
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                   type="button"
                   onClick={() =>
                     setSelectedPositions([...availablePositions])
@@ -282,11 +282,11 @@ export default function ScoutProfilePage() {
                 </button>
               </div>
               {selectedPositions.length ? (
-                <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                <div className="flex flex-wrap gap-2 text-sm text-muted">
                   {selectedPositions.map((position) => (
                     <div
                       key={position}
-                      className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                      className="flex items-center gap-2 rounded-lg border border-line px-3 py-1"
                     >
                       <input
                         type="hidden"
@@ -295,7 +295,7 @@ export default function ScoutProfilePage() {
                       />
                       <span>{position}</span>
                       <button
-                        className="text-white/50 hover:text-white"
+                        className="text-faint transition hover:text-ink"
                         type="button"
                         onClick={() =>
                           setSelectedPositions((prev) =>
@@ -309,7 +309,7 @@ export default function ScoutProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-white/50">
+                <p className="text-sm text-faint">
                   No positions selected yet.
                 </p>
               )}
@@ -318,7 +318,7 @@ export default function ScoutProfilePage() {
         </div>
         <div className="md:col-span-2 flex flex-col gap-3">
           <button
-            className="w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black md:w-fit"
+            className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-soft md:w-fit"
             type="submit"
             disabled={status === "saving"}
           >
@@ -327,7 +327,7 @@ export default function ScoutProfilePage() {
           {message ? (
             <p
               className={`text-sm ${
-                status === "error" ? "text-red-300" : "text-white/70"
+                status === "error" ? "text-danger" : "text-muted"
               }`}
             >
               {message}

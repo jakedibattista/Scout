@@ -71,13 +71,13 @@ export default function AthleteProfilePage() {
           event.preventDefault();
         }}
       >
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="font-display text-xl">Required</h2>
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl font-semibold">Required</h2>
           <div className="mt-4 grid gap-4 text-sm">
             <label className="flex flex-col gap-2">
               Name
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="name"
                 placeholder="Athlete name"
                 required
@@ -86,7 +86,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Username
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="username"
                 placeholder="athletename"
                 required
@@ -95,7 +95,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Email
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="email"
                 type="email"
                 placeholder="name@email.com"
@@ -105,7 +105,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Password
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="password"
                 type="password"
                 placeholder="Create a password"
@@ -115,7 +115,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               State
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="state"
                 required
                 defaultValue="MD"
@@ -181,7 +181,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Sport
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="sport"
                 required
                 defaultValue="lacrosse"
@@ -205,7 +205,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Gender
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="gender"
                 required
                 defaultValue="male"
@@ -217,7 +217,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Position
               <select
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="position"
                 required={availablePositions.length > 0}
                 value={resolvedPosition}
@@ -233,7 +233,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Height
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="height"
                 placeholder="6'1"
                 required
@@ -242,7 +242,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Weight
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="weight"
                 placeholder="185 lb"
                 required
@@ -251,7 +251,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Graduation year
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="gradYear"
                 type="number"
                 min={2026}
@@ -262,7 +262,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               High school team
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="highSchoolTeam"
                 placeholder="High school team name"
                 required
@@ -271,7 +271,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Goal
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="goal"
                 placeholder="Go D1"
                 required
@@ -279,13 +279,13 @@ export default function AthleteProfilePage() {
             </label>
           </div>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="font-display text-xl">Optional</h2>
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl font-semibold">Optional</h2>
           <div className="mt-4 grid gap-4 text-sm">
             <label className="flex flex-col gap-2">
               Instagram
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="instagram"
                 placeholder="@username"
               />
@@ -293,7 +293,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               X
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="x"
                 placeholder="@username"
               />
@@ -301,7 +301,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               TikTok
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="tiktok"
                 placeholder="@username"
               />
@@ -309,7 +309,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               YouTube
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="youtube"
                 placeholder="@username"
               />
@@ -317,7 +317,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Highlight tape
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="highlightTapeUrl"
                 placeholder="https://youtube.com/..."
               />
@@ -325,7 +325,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               Club team
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="clubTeam"
                 placeholder="Club team name"
               />
@@ -333,7 +333,7 @@ export default function AthleteProfilePage() {
             <label className="flex flex-col gap-2">
               GPA
               <input
-                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
                 name="gpa"
                 type="number"
                 step="0.1"
@@ -343,12 +343,12 @@ export default function AthleteProfilePage() {
               />
             </label>
             <div className="flex flex-col gap-3">
-              <div className="text-xs uppercase tracking-wider text-white/50">
+              <div className="text-sm font-medium text-faint">
                 Current offers
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <input
-                  className="flex-1 rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  className="flex-1 rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                   value={pendingOffer}
                   onChange={(event) => setPendingOffer(event.target.value)}
                   onKeyDown={(event) => {
@@ -360,7 +360,7 @@ export default function AthleteProfilePage() {
                   placeholder="Add offer"
                 />
                 <button
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                   type="button"
                   onClick={() => {
                     if (!pendingOffer.trim()) return;
@@ -374,16 +374,16 @@ export default function AthleteProfilePage() {
                 </button>
               </div>
               {offers.length ? (
-                <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                <div className="flex flex-wrap gap-2 text-sm text-muted">
                   {offers.map((offer) => (
                     <div
                       key={offer}
-                      className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                      className="flex items-center gap-2 rounded-lg border border-line px-3 py-1"
                     >
                       <input type="hidden" name="currentOffers" value={offer} />
                       <span>{offer}</span>
                       <button
-                        className="text-white/50 hover:text-white"
+                        className="text-faint transition hover:text-ink"
                         type="button"
                         onClick={() =>
                           setOffers((prev) =>
@@ -397,7 +397,7 @@ export default function AthleteProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-white/50">No offers added yet.</p>
+                <p className="text-sm text-faint">No offers added yet.</p>
               )}
             </div>
             <StateChecklist
@@ -408,7 +408,7 @@ export default function AthleteProfilePage() {
         </div>
         <div className="md:col-span-2 flex flex-col gap-3">
           <button
-            className="w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black md:w-fit"
+            className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-soft md:w-fit"
             type="submit"
             disabled={status === "saving"}
           >
@@ -417,7 +417,7 @@ export default function AthleteProfilePage() {
           {message ? (
             <p
               className={`text-sm ${
-                status === "error" ? "text-red-300" : "text-white/70"
+                status === "error" ? "text-danger" : "text-muted"
               }`}
             >
               {message}

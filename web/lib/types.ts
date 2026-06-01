@@ -2,7 +2,9 @@ export type SportOption = "lacrosse" | "hockey" | "football";
 
 export type ScoutLevel = "D1" | "D2" | "D3" | "JUCO" | "Club";
 
-export type DrillType = "speed_ladder" | "shuttle_run" | "position_specific";
+// Canonical drill types live in lib/drills; re-export to keep one source of truth.
+export type { DrillType } from "@/lib/drills";
+import type { DrillType } from "@/lib/drills";
 
 export type ReportType = "scout" | "research" | "coach";
 

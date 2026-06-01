@@ -1,8 +1,8 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
 import { withRetry, withTimeout } from "@/lib/gemini/retry";
-
-const defaultModel = "gemini-3-flash-preview";
+import { GEMINI_MODEL } from "@/lib/gemini/config";
+import { parseGeminiJson } from "@/lib/gemini/parseJson";
 
 type ScoutProfile = {
   sport?: string;
@@ -82,21 +82,12 @@ Rules:
 }
 
 function parsePlan(raw: string): ScoutQueryPlan {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-  try {
-    const parsed = JSON.parse(candidate) as ScoutQueryPlan;
-    return parsed;
-  } catch (error) {
-    return {
-      intent: "general",
-      filters: {},
-      sort: { by: "relevance", direction: "desc" },
-      notes: "Fallback to default plan.",
-    };
-  }
+  return parseGeminiJson<ScoutQueryPlan>(raw, {
+    intent: "general",
+    filters: {},
+    sort: { by: "relevance", direction: "desc" },
+    notes: "Fallback to default plan.",
+  });
 }
 
 export async function buildScoutQueryPlan(input: {
@@ -107,7 +98,7 @@ export async function buildScoutQueryPlan(input: {
   const response = await withRetry("Gemini scout query", () =>
     withTimeout(
       ai.models.generateContent({
-        model: process.env.GEMINI_MODEL ?? defaultModel,
+        model: GEMINI_MODEL,
         contents: createUserContent([buildPrompt(input.profile, input.query)]),
       }),
       25_000

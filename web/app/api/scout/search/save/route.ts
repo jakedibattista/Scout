@@ -1,16 +1,21 @@
 import { adminDb, adminFieldValue } from "@/lib/firebaseAdmin";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return unauthorized();
+    if (session.role !== "scout") return forbidden();
+
     const payload = await request.json();
     const query = String(payload?.query ?? "").trim();
-    const scoutUsername = String(payload?.scoutUsername ?? "");
+    const scoutUsername = session.username;
 
-    if (!query || !scoutUsername) {
+    if (!query) {
       return Response.json(
-        { ok: false, error: "Missing query or scout username." },
+        { ok: false, error: "Missing query." },
         { status: 400 }
       );
     }
@@ -43,13 +48,17 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return unauthorized();
+    if (session.role !== "scout") return forbidden();
+
     const payload = await request.json();
     const id = String(payload?.id ?? "").trim();
-    const scoutUsername = String(payload?.scoutUsername ?? "");
+    const scoutUsername = session.username;
 
-    if (!id || !scoutUsername) {
+    if (!id) {
       return Response.json(
-        { ok: false, error: "Missing search id or scout username." },
+        { ok: false, error: "Missing search id." },
         { status: 400 }
       );
     }

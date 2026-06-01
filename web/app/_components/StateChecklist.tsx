@@ -114,12 +114,10 @@ export default function StateChecklist({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-xs uppercase tracking-wider text-white/50">
-        {label}
-      </div>
+      <div className="text-sm font-medium text-muted">{label}</div>
       <div className="flex flex-wrap items-center gap-3">
         <select
-          className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+          className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
           value={pending}
           onChange={(event) => setPending(event.target.value)}
         >
@@ -130,7 +128,7 @@ export default function StateChecklist({
           ))}
         </select>
         <button
-          className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+          className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
           type="button"
           onClick={addState}
           disabled={!availableStates.length}
@@ -138,7 +136,7 @@ export default function StateChecklist({
           Add state
         </button>
         <button
-          className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+          className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
           type="button"
           onClick={selectAllStates}
           disabled={selected.length === states.length}
@@ -147,18 +145,19 @@ export default function StateChecklist({
         </button>
       </div>
       {selected.length ? (
-        <div className="flex flex-wrap gap-2 text-xs text-white/70">
+        <div className="flex flex-wrap gap-2 text-sm text-muted">
           {selected.map((state) => (
             <div
               key={state}
-              className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+              className="flex items-center gap-2 rounded-lg border border-line px-3 py-1"
             >
               <input type="hidden" name={name} value={state} />
               <span>{state}</span>
               <button
-                className="text-white/50 hover:text-white"
+                className="text-faint transition hover:text-ink"
                 type="button"
                 onClick={() => removeState(state)}
+                aria-label={`Remove ${state}`}
               >
                 ×
               </button>
@@ -166,7 +165,7 @@ export default function StateChecklist({
           ))}
         </div>
       ) : (
-        <p className="text-xs text-white/50">No states selected yet.</p>
+        <p className="text-sm text-faint">No states selected yet.</p>
       )}
     </div>
   );

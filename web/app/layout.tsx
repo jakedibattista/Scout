@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,16 +8,10 @@ const inter = Inter({
   display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Scout",
   description:
-    "A modern scouting platform for athletes and college scouts.",
+    "A scouting platform for athletes and college scouts.",
 };
 
 export default function RootLayout({
@@ -26,15 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
-    >
-      <body
-        className="bg-black text-white"
-      >
-        {children}
-      </body>
+    <html lang="en" className={`${inter.variable} antialiased`}>
+      <body className="bg-bg text-ink">{children}</body>
     </html>
   );
 }

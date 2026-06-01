@@ -63,19 +63,19 @@ export default function LoginPage() {
       subtitle="Use your username and password to continue."
     >
       <form className="grid gap-6 md:max-w-xl" onSubmit={handleSubmit}>
-        <label className="flex flex-col gap-2 text-sm text-white/70">
-          Username or Email
+        <label className="flex flex-col gap-2 text-sm text-muted">
+          Username or email
           <input
-            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+            className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
             name="identifier"
             placeholder="username or email"
             required
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-white/70">
+        <label className="flex flex-col gap-2 text-sm text-muted">
           Password
           <input
-            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+            className="rounded-xl border border-line bg-surface px-4 py-3 text-ink"
             name="password"
             type="password"
             placeholder="Password"
@@ -83,7 +83,7 @@ export default function LoginPage() {
           />
         </label>
         <button
-          className="w-full rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black md:w-fit"
+          className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-soft md:w-fit"
           type="submit"
           disabled={status === "saving"}
         >
@@ -92,7 +92,7 @@ export default function LoginPage() {
         {message ? (
           <p
             className={`text-sm ${
-              status === "error" ? "text-red-300" : "text-white/70"
+              status === "error" ? "text-danger" : "text-muted"
             }`}
           >
             {message}

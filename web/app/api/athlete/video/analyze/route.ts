@@ -2,10 +2,15 @@ import { adminDb, adminFieldValue } from "@/lib/firebaseAdmin";
 import { analyzeDrillVideo } from "@/lib/gemini";
 import { buildAndStoreCoachingReport } from "@/lib/coachingReport";
 import { buildAndStoreScoutReport } from "@/lib/scoutReport";
+import { isDrillType } from "@/lib/drills";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
   const payload = await request.json().catch(() => ({}));
   const videoId = String(payload?.videoId ?? "");
 
@@ -28,14 +33,17 @@ export async function POST(request: Request) {
     }
 
     const data = videoSnap.data() ?? {};
-    const drillType = data.drillType as
-      | "wall_ball"
-      | "dash_20"
-      | "shuttle_5_10_5";
+
+    // Only the athlete who owns the video may trigger its analysis.
+    if (session.username !== String(data.athleteId ?? "")) {
+      return forbidden();
+    }
+
+    const drillType = data.drillType;
     const filePath = String(data.filePath ?? "");
     const fileName = String(data.fileName ?? "video.mp4");
 
-    if (!filePath || !drillType) {
+    if (!filePath || !isDrillType(drillType)) {
       return Response.json(
         { ok: false, error: "Missing video data." },
         { status: 400 }

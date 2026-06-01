@@ -1,17 +1,14 @@
 import { adminDb } from "@/lib/firebaseAdmin";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const scoutUsername = String(searchParams.get("scoutUsername") ?? "");
+  const session = await getSession();
+  if (!session) return unauthorized();
+  if (session.role !== "scout") return forbidden();
 
-  if (!scoutUsername) {
-    return Response.json(
-      { ok: false, error: "Missing scout username." },
-      { status: 400 }
-    );
-  }
+  const scoutUsername = session.username;
 
   try {
     let snapshot;

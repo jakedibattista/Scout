@@ -1,4 +1,6 @@
 import { adminDb, adminStorage } from "@/lib/firebaseAdmin";
+import { SIGNED_URL_TTL_MS } from "@/lib/config";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
 
 type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
@@ -20,6 +22,13 @@ export async function GET(request: Request, context: RouteContext) {
       : (context.params as { id: string });
   const athleteId = decodeURIComponent(resolvedParams.id);
 
+  const session = await getSession();
+  if (!session) return unauthorized();
+  // Scouts may browse any athlete; an athlete may view their own page.
+  if (session.role !== "scout" && session.username !== athleteId) {
+    return forbidden();
+  }
+
   try {
     const profileRef = adminDb.collection("athleteProfiles").doc(athleteId);
     const profileSnap = await profileRef.get();
@@ -31,14 +40,10 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const profile = profileSnap.data() ?? {};
-    const videosSnapshot = await adminDb
-      .collection("videos")
-      .where("athleteId", "==", athleteId)
-      .get();
-    const reportsSnapshot = await adminDb
-      .collection("reports")
-      .where("athleteId", "==", athleteId)
-      .get();
+    const [videosSnapshot, reportsSnapshot] = await Promise.all([
+      adminDb.collection("videos").where("athleteId", "==", athleteId).get(),
+      adminDb.collection("reports").where("athleteId", "==", athleteId).get(),
+    ]);
 
     const bucket = adminStorage.bucket();
     const videos = await Promise.all(
@@ -49,7 +54,7 @@ export async function GET(request: Request, context: RouteContext) {
         if (filePath) {
           const [signedUrl] = await bucket.file(filePath).getSignedUrl({
             action: "read",
-            expires: Date.now() + 15 * 60 * 1000,
+            expires: Date.now() + SIGNED_URL_TTL_MS,
           });
           viewUrl = signedUrl;
         }

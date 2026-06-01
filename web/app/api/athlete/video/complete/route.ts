@@ -1,18 +1,23 @@
 import { adminDb, adminFieldValue, adminStorage } from "@/lib/firebaseAdmin";
+import { isDrillType } from "@/lib/drills";
+import { SIGNED_URL_TTL_MS } from "@/lib/config";
+import { getSession, unauthorized } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
-const allowedDrills = new Set(["wall_ball", "dash_20", "shuttle_5_10_5"]);
-
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return unauthorized();
+
     const payload = await request.json();
     const drillType = String(payload?.drillType ?? "");
     const filePath = String(payload?.filePath ?? "");
     const fileName = String(payload?.fileName ?? "");
-    const athleteId = String(payload?.athleteId ?? "unknown");
+    // Identity comes from the session, never from the client body.
+    const athleteId = session.username;
 
-    if (!allowedDrills.has(drillType)) {
+    if (!isDrillType(drillType)) {
       return Response.json(
         { ok: false, error: "Invalid drill type." },
         { status: 400 }
@@ -47,7 +52,7 @@ export async function POST(request: Request) {
     try {
       const [signedUrl] = await bucket.file(filePath).getSignedUrl({
         action: "read",
-        expires: Date.now() + 15 * 60 * 1000,
+        expires: Date.now() + SIGNED_URL_TTL_MS,
       });
       viewUrl = signedUrl;
     } catch (error) {

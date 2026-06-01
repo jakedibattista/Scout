@@ -125,36 +125,36 @@ export default function AthleteDetailPage() {
       title={athleteName}
       subtitle="Scout view of the athlete profile, videos, and AI report."
       actions={
-        <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <Link
-            className="rounded-full border border-white/20 px-4 py-2 text-white"
+            className="rounded-xl border border-line-strong px-4 py-2 text-ink transition hover:border-ink"
             href="/scout/search"
           >
             Back to search
           </Link>
-          <div className="rounded-full border border-white/20 px-4 py-2 text-white/70">
+          <div className="rounded-xl border border-line px-4 py-2 text-muted">
             {(athlete?.name ?? athleteName) || "Athlete"} ·{" "}
             {athlete?.email || "athlete@email.com"} ·{" "}
-            {athlete?.state || "--"}
+            {athlete?.state || "Not set"}
           </div>
         </div>
       }
     >
       <div className="flex flex-col gap-6">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="font-display text-xl">Scouting report</h2>
-          <p className="mt-3 text-sm text-white/70">
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl font-semibold">Scouting report</h2>
+          <p className="mt-3 text-sm text-muted">
             {scoutReport?.summary ??
               "Enter competitions and combine drills to get your scouting report."}
           </p>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
+            <div className="rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted">
               Strengths:{" "}
               {Array.isArray(scoutReport?.strengths)
                 ? scoutReport?.strengths.join(", ")
                 : "Speed, quick decision-making"}
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
+            <div className="rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted">
               Weaknesses:{" "}
               {Array.isArray(scoutReport?.weaknesses)
                 ? scoutReport?.weaknesses.join(", ")
@@ -162,14 +162,14 @@ export default function AthleteDetailPage() {
             </div>
           </div>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="font-display text-xl">Videos</h2>
+        <div className="rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl font-semibold">Videos</h2>
           {loading ? (
-            <p className="mt-4 text-sm text-white/60">Loading videos...</p>
+            <p className="mt-4 text-sm text-muted">Loading videos...</p>
           ) : error ? (
-            <p className="mt-4 text-sm text-red-300">{error}</p>
+            <p className="mt-4 text-sm text-danger">{error}</p>
           ) : videos.length === 0 ? (
-            <p className="mt-4 text-sm text-white/60">
+            <p className="mt-4 text-sm text-muted">
               No videos uploaded yet.
             </p>
           ) : (
@@ -236,37 +236,37 @@ export default function AthleteDetailPage() {
                 const shuttleGrade =
                   key === "shuttle_5_10_5"
                     ? latest?.analysisStatus === "ready" && totalTimeValue === null
-                      ? { label: "Unavailable", color: "text-white/40" }
+                      ? { label: "Unavailable", color: "text-faint" }
                       : getShuttleGrade(totalTimeValue)
                     : null;
                 const dashGrade =
                   key === "dash_20"
                     ? latest?.analysisStatus === "ready" && totalTimeValue === null
-                      ? { label: "Unavailable", color: "text-white/40" }
+                      ? { label: "Unavailable", color: "text-faint" }
                       : getDashGrade(totalTimeValue)
                     : null;
                 const wallBallGrade =
                   key === "wall_ball"
                     ? latest?.analysisStatus === "ready" && repsValue === null
-                      ? { label: "Unavailable", color: "text-white/40" }
+                      ? { label: "Unavailable", color: "text-faint" }
                       : getWallBallGrade(repsValue)
                     : null;
 
                 return (
                   <div
                     key={key}
-                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70"
+                    className="rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted"
                   >
-                    <div className="flex items-center justify-between text-sm text-white">
+                    <div className="flex items-center justify-between text-sm text-ink">
                       <span>{label}</span>
                     </div>
                     {key === "shuttle_5_10_5" ? (
                       <div className="mt-3 flex items-center gap-3 text-xs">
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Speed: {formatSeconds(totalTimeValue)}
                         </div>
                         <div
-                          className={`rounded-full border border-white/10 px-3 py-1 ${shuttleGrade?.color ?? "text-white/50"}`}
+                          className={`rounded-lg border border-line px-3 py-1 ${shuttleGrade?.color ?? "text-faint"}`}
                         >
                           {shuttleGrade?.label ?? "Pending"}
                         </div>
@@ -274,11 +274,11 @@ export default function AthleteDetailPage() {
                     ) : null}
                     {key === "dash_20" ? (
                       <div className="mt-3 flex items-center gap-3 text-xs">
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Speed: {formatSeconds(totalTimeValue)}
                         </div>
                         <div
-                          className={`rounded-full border border-white/10 px-3 py-1 ${dashGrade?.color ?? "text-white/50"}`}
+                          className={`rounded-lg border border-line px-3 py-1 ${dashGrade?.color ?? "text-faint"}`}
                         >
                           {dashGrade?.label ?? "Pending"}
                         </div>
@@ -286,27 +286,27 @@ export default function AthleteDetailPage() {
                     ) : null}
                     {key === "wall_ball" ? (
                       <div className="mt-3 flex items-center gap-3 text-xs">
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Reps (60s): {formatCount(repsValue)}
                         </div>
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Max streak: {formatCount(maxStreak)}
                         </div>
                         <div
-                          className={`rounded-full border border-white/10 px-3 py-1 ${wallBallGrade?.color ?? "text-white/50"}`}
+                          className={`rounded-lg border border-line px-3 py-1 ${wallBallGrade?.color ?? "text-faint"}`}
                         >
                           {wallBallGrade?.label ?? "Pending"}
                         </div>
                       </div>
                     ) : null}
                     {latest?.uploadDate ? (
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-sm text-faint">
                         Date: {new Date(latest.uploadDate).toLocaleDateString()}
                       </div>
                     ) : null}
                     {latest?.viewUrl ? (
                       <div className="mt-3">
-                        <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                        <div className="aspect-video w-full overflow-hidden rounded-xl border border-line bg-bg">
                           <video
                             className="h-full w-full object-cover"
                             controls
@@ -316,11 +316,11 @@ export default function AthleteDetailPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-3 text-xs text-white/50">
+                      <div className="mt-3 text-sm text-faint">
                         No video uploaded yet.
                       </div>
                     )}
-                    <div className="mt-3 text-xs text-white/60">
+                    <div className="mt-3 text-sm text-muted">
                       {latest?.analysisNotes
                         ? latest.analysisNotes
                         : "AI analysis will appear here after processing."}

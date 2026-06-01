@@ -1,8 +1,8 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
 import { withRetry } from "@/lib/gemini/retry";
-
-const defaultModel = "gemini-3-flash-preview";
+import { GEMINI_MODEL } from "@/lib/gemini/config";
+import { parseGeminiJson } from "@/lib/gemini/parseJson";
 
 type ScoutReportInput = {
   athleteProfile: Record<string, unknown>;
@@ -52,31 +52,19 @@ Rules:
 }
 
 function parseOutput(raw: string): ScoutReportOutput {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-  try {
-    const parsed = JSON.parse(candidate) as ScoutReportOutput;
-    return {
-      summary: parsed.summary ?? trimmed,
-      keyTraits: Array.isArray(parsed.keyTraits) ? parsed.keyTraits : [],
-      weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
-    };
-  } catch {
-    return {
-      summary: trimmed,
-      keyTraits: [],
-      weaknesses: [],
-    };
-  }
+  const parsed = parseGeminiJson<Partial<ScoutReportOutput>>(raw, {});
+  return {
+    summary: parsed.summary ?? raw.trim(),
+    keyTraits: Array.isArray(parsed.keyTraits) ? parsed.keyTraits : [],
+    weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
+  };
 }
 
 export async function generateScoutReport(input: ScoutReportInput) {
   const ai = getGeminiClient();
   const response = await withRetry("Gemini scout report", () =>
     ai.models.generateContent({
-      model: process.env.GEMINI_MODEL ?? defaultModel,
+      model: GEMINI_MODEL,
       contents: createUserContent([buildPrompt(input)]),
     })
   );

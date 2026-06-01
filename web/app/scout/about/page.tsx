@@ -124,42 +124,42 @@ export default function ScoutAboutPage() {
       title="Scout About Me"
       subtitle="Update your scouting demographics to improve matches."
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div className="flex flex-wrap gap-3">
           <Link
-            className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white"
+            className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
             href="/scout/search"
           >
-            Find Athletes
+            Find athletes
           </Link>
           <button
-            className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-black"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-on-accent"
             type="button"
           >
-            About Me
+            About me
           </button>
         </div>
         <Link
-          className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-wider text-white/70 hover:text-white"
+          className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-ink"
           href="/"
         >
           Log out
         </Link>
       </div>
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+      <div className="rounded-2xl border border-line bg-surface p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-xl">Profile</h2>
+          <h2 className="font-display text-xl font-semibold">Profile</h2>
           {isEditing ? (
-            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wider">
+            <div className="flex flex-wrap gap-2 text-sm">
               <button
-                className="rounded-full bg-yellow-400 px-4 py-2 font-semibold text-black"
+                className="rounded-xl bg-accent px-4 py-2 font-medium text-on-accent transition hover:bg-accent-soft"
                 type="button"
                 onClick={handleSave}
               >
                 Save
               </button>
               <button
-                className="rounded-full border border-white/20 px-4 py-2 text-white/70 hover:text-white"
+                className="rounded-xl border border-line px-4 py-2 text-muted transition hover:text-ink"
                 type="button"
                 onClick={handleCancel}
               >
@@ -168,7 +168,7 @@ export default function ScoutAboutPage() {
             </div>
           ) : (
             <button
-              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white"
+              className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
               type="button"
               onClick={() => {
                 setIsEditing(true);
@@ -180,16 +180,16 @@ export default function ScoutAboutPage() {
           )}
         </div>
         {message ? (
-          <p className="mt-2 text-sm text-white/70">{message}</p>
+          <p className="mt-2 text-sm text-muted">{message}</p>
         ) : null}
-        <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
+        <div className="mt-4 grid gap-4 text-sm text-muted md:grid-cols-2">
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Name
             </div>
             {isEditing ? (
               <input
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                 name="name"
                 value={form.name}
                 onChange={handleChange}
@@ -199,12 +199,12 @@ export default function ScoutAboutPage() {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Email
             </div>
             {isEditing ? (
               <input
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                 name="email"
                 value={form.email}
                 onChange={handleChange}
@@ -214,12 +214,12 @@ export default function ScoutAboutPage() {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               School / Program
             </div>
             {isEditing ? (
               <input
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                 name="program"
                 value={form.program}
                 onChange={handleChange}
@@ -229,12 +229,12 @@ export default function ScoutAboutPage() {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Sport
             </div>
             {isEditing ? (
               <select
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                 name="sport"
                 value={form.sport}
                 onChange={(event) =>
@@ -260,12 +260,12 @@ export default function ScoutAboutPage() {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Recruiting Gender
             </div>
             {isEditing ? (
               <select
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                 name="genderFocus"
                 value={form.genderFocus}
                 onChange={handleChange}
@@ -279,17 +279,17 @@ export default function ScoutAboutPage() {
                 {form.genderFocus
                   ? form.genderFocus.charAt(0).toUpperCase() +
                     form.genderFocus.slice(1)
-                  : "--"}
+                  : "Not set"}
               </div>
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Program Level
             </div>
             {isEditing ? (
               <input
-                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                 name="level"
                 value={form.level}
                 onChange={handleChange}
@@ -300,13 +300,15 @@ export default function ScoutAboutPage() {
           </div>
         </div>
       </div>
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+      <div className="rounded-2xl border border-line bg-surface p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-xl">Recruiting Preferences</h2>
+          <h2 className="font-display text-xl font-semibold">
+            Recruiting preferences
+          </h2>
         </div>
-        <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
+        <div className="mt-4 grid gap-4 text-sm text-muted md:grid-cols-2">
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Recruiting States
             </div>
             {isEditing ? (
@@ -329,14 +331,14 @@ export default function ScoutAboutPage() {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Graduation Years Recruiting
             </div>
             {isEditing ? (
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <select
-                    className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                    className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                     value={pendingGradYear}
                     onChange={(event) =>
                       setPendingGradYear(Number(event.target.value))
@@ -351,7 +353,7 @@ export default function ScoutAboutPage() {
                     )}
                   </select>
                   <button
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                    className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                     type="button"
                     onClick={() => {
                       if (form.gradYearsRecruiting.includes(pendingGradYear))
@@ -369,15 +371,15 @@ export default function ScoutAboutPage() {
                   </button>
                 </div>
                 {form.gradYearsRecruiting.length ? (
-                  <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                  <div className="flex flex-wrap gap-2 text-sm text-muted">
                     {form.gradYearsRecruiting.map((year) => (
                       <div
                         key={year}
-                        className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                        className="flex items-center gap-2 rounded-lg border border-line px-3 py-1"
                       >
                         <span>{year}</span>
                         <button
-                          className="text-white/50 hover:text-white"
+                          className="text-faint transition hover:text-ink"
                           type="button"
                           onClick={() =>
                             setForm((prev) => ({
@@ -394,7 +396,7 @@ export default function ScoutAboutPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-white/50">
+                  <p className="text-sm text-faint">
                     No years selected yet.
                   </p>
                 )}
@@ -408,14 +410,14 @@ export default function ScoutAboutPage() {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="text-sm font-medium text-faint">
               Position Focus
             </div>
             {isEditing ? (
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <select
-                    className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                    className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                     value={pendingPosition}
                     onChange={(event) => setPendingPosition(event.target.value)}
                   >
@@ -426,7 +428,7 @@ export default function ScoutAboutPage() {
                     ))}
                   </select>
                   <button
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                    className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                     type="button"
                     onClick={() => {
                       if (!pendingPosition) return;
@@ -441,15 +443,15 @@ export default function ScoutAboutPage() {
                   </button>
                 </div>
                 {form.positionFocus.length ? (
-                  <div className="flex flex-wrap gap-2 text-xs text-white/70">
+                  <div className="flex flex-wrap gap-2 text-sm text-muted">
                     {form.positionFocus.map((position) => (
                       <div
                         key={position}
-                        className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1"
+                        className="flex items-center gap-2 rounded-lg border border-line px-3 py-1"
                       >
                         <span>{position}</span>
                         <button
-                          className="text-white/50 hover:text-white"
+                          className="text-faint transition hover:text-ink"
                           type="button"
                           onClick={() =>
                             setForm((prev) => ({
@@ -466,7 +468,7 @@ export default function ScoutAboutPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-white/50">
+                  <p className="text-sm text-faint">
                     No positions selected yet.
                   </p>
                 )}

@@ -1,8 +1,15 @@
 import { adminDb, adminFieldValue } from "@/lib/firebaseAdmin";
 import { buildAndStoreCoachingReport } from "@/lib/coachingReport";
 import { buildAndStoreScoutReport } from "@/lib/scoutReport";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
+
+async function loadEventOwner(id: string): Promise<string | null> {
+  const snap = await adminDb.collection("events").doc(id).get();
+  if (!snap.exists) return null;
+  return String(snap.data()?.athleteId ?? "");
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,6 +20,12 @@ export async function GET(request: Request) {
       { ok: false, error: "Missing athleteId." },
       { status: 400 }
     );
+  }
+
+  const session = await getSession();
+  if (!session) return unauthorized();
+  if (session.role !== "scout" && session.username !== athleteId) {
+    return forbidden();
   }
 
   try {
@@ -54,27 +67,33 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
   try {
     const payload = await request.json();
-    if (!payload?.athleteId || !payload?.url || !payload?.eventName) {
+    if (!payload?.url || !payload?.eventName) {
       return Response.json(
-        { ok: false, error: "Missing athleteId, eventName, or url." },
+        { ok: false, error: "Missing eventName or url." },
         { status: 400 }
       );
     }
 
+    // Events are always created for the authenticated athlete.
+    const athleteId = session.username;
+
     await adminDb.collection("events").add({
-      athleteId: String(payload.athleteId),
+      athleteId,
       eventName: String(payload.eventName),
       url: String(payload.url),
       summary: String(payload.summary ?? ""),
       createdAt: adminFieldValue.serverTimestamp(),
       updatedAt: adminFieldValue.serverTimestamp(),
     });
-    void buildAndStoreCoachingReport(String(payload.athleteId)).catch((error) =>
+    void buildAndStoreCoachingReport(athleteId).catch((error) =>
       console.error("Coaching report failed:", error)
     );
-    void buildAndStoreScoutReport(String(payload.athleteId)).catch((error) =>
+    void buildAndStoreScoutReport(athleteId).catch((error) =>
       console.error("Scout report failed:", error)
     );
 
@@ -88,11 +107,22 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
   try {
     const payload = await request.json();
     const id = String(payload?.id ?? "");
     if (!id) {
       return Response.json({ ok: false, error: "Missing event id." }, { status: 400 });
+    }
+
+    const owner = await loadEventOwner(id);
+    if (owner === null) {
+      return Response.json({ ok: false, error: "Event not found." }, { status: 404 });
+    }
+    if (owner !== session.username) {
+      return forbidden();
     }
 
     await adminDb.collection("events").doc(id).set(
@@ -104,14 +134,12 @@ export async function PATCH(request: Request) {
       },
       { merge: true }
     );
-    if (payload?.athleteId) {
-      void buildAndStoreCoachingReport(String(payload.athleteId)).catch(
-        (error) => console.error("Coaching report failed:", error)
-      );
-      void buildAndStoreScoutReport(String(payload.athleteId)).catch((error) =>
-        console.error("Scout report failed:", error)
-      );
-    }
+    void buildAndStoreCoachingReport(session.username).catch((error) =>
+      console.error("Coaching report failed:", error)
+    );
+    void buildAndStoreScoutReport(session.username).catch((error) =>
+      console.error("Scout report failed:", error)
+    );
 
     return Response.json({ ok: true });
   } catch (error) {
@@ -123,6 +151,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const session = await getSession();
+  if (!session) return unauthorized();
+
   try {
     const payload = await request.json();
     const id = String(payload?.id ?? "");
@@ -133,15 +164,21 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await adminDb.collection("events").doc(id).delete();
-    if (payload?.athleteId) {
-      void buildAndStoreCoachingReport(String(payload.athleteId)).catch(
-        (error) => console.error("Coaching report failed:", error)
-      );
-      void buildAndStoreScoutReport(String(payload.athleteId)).catch((error) =>
-        console.error("Scout report failed:", error)
-      );
+    const owner = await loadEventOwner(id);
+    if (owner === null) {
+      return Response.json({ ok: false, error: "Event not found." }, { status: 404 });
     }
+    if (owner !== session.username) {
+      return forbidden();
+    }
+
+    await adminDb.collection("events").doc(id).delete();
+    void buildAndStoreCoachingReport(session.username).catch((error) =>
+      console.error("Coaching report failed:", error)
+    );
+    void buildAndStoreScoutReport(session.username).catch((error) =>
+      console.error("Scout report failed:", error)
+    );
 
     return Response.json({ ok: true });
   } catch (error) {

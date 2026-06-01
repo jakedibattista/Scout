@@ -175,42 +175,44 @@ export default function ScoutSearchPage() {
       title="Scout Search"
       subtitle="Search with natural language and let the system translate it into filters."
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div className="flex flex-wrap gap-3">
         <button
-          className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-black"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-on-accent"
           type="button"
         >
-          Find Athletes
+          Find athletes
         </button>
         <Link
-          className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white"
+          className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
           href="/scout/about"
         >
-          About Me
+          About me
         </Link>
         </div>
         <Link
-          className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-wider text-white/70 hover:text-white"
+          className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-ink"
           href="/"
         >
           Log out
         </Link>
       </div>
       <form
-        className="rounded-3xl border border-white/10 bg-white/5 p-6"
+        className="rounded-2xl border border-line bg-surface p-6"
         onSubmit={handleSearch}
       >
-        <h2 className="font-display text-xl">What are you looking for?</h2>
+        <h2 className="font-display text-xl font-semibold">
+          What are you looking for?
+        </h2>
         <div className="mt-6 flex flex-col gap-4 md:flex-row">
           <input
-            className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+            className="flex-1 rounded-xl border border-line bg-surface-2 px-4 py-3 text-ink"
             name="query"
             placeholder="e.g., fastest defender in Maryland, DH with a 3.0 GPA"
             required
           />
           <button
-            className="rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black"
+            className="rounded-xl bg-accent px-6 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-soft"
             type="submit"
             disabled={status === "searching"}
           >
@@ -219,21 +221,21 @@ export default function ScoutSearchPage() {
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           {status === "error" && message ? (
-            <p className="text-sm text-red-300">{message}</p>
+            <p className="text-sm text-danger">{message}</p>
           ) : null}
       {status === "done" && planJson ? (
-        <details className="mt-4 text-xs text-white/60">
-          <summary className="cursor-pointer uppercase tracking-wider text-white/50">
+        <details className="mt-4 text-sm text-muted">
+          <summary className="cursor-pointer text-sm font-medium text-faint">
             View query plan
           </summary>
-          <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/40 p-4 text-white/70">
+          <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-line bg-surface-2 p-4 text-muted">
             {planJson}
           </pre>
         </details>
       ) : null}
           {status === "done" && lastQuery ? (
             <button
-              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white"
+              className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
               type="button"
               onClick={handleAddAlert}
               disabled={notifyEnabled}
@@ -245,14 +247,14 @@ export default function ScoutSearchPage() {
           ) : null}
         </div>
       </form>
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-        <div className="grid grid-cols-3 gap-4 border-b border-white/10 px-6 py-4 text-xs uppercase tracking-wider text-white/60">
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="grid grid-cols-3 gap-4 border-b border-line px-6 py-4 text-sm font-medium text-faint">
           <span>Athlete</span>
-          <span>Scouting Report</span>
+          <span>Scouting report</span>
           <span>Actions</span>
         </div>
         {lastSortBy ? (
-          <div className="border-b border-white/10 px-6 py-2 text-xs text-white/50">
+          <div className="border-b border-line px-6 py-2 text-sm text-faint">
             {lastSortBy === "speed_score"
               ? "Sorted by speed (shuttle + 20-yard dash)."
               : lastSortBy === "wall_ball_score"
@@ -260,59 +262,61 @@ export default function ScoutSearchPage() {
                 : `Sorted by ${lastSortBy.replace(/_/g, " ")}.`}
           </div>
         ) : null}
-        <div className="divide-y divide-white/10">
+        <div className="divide-y divide-line">
           {results.length ? (
             results.map((athlete) => (
               <div
                 key={athlete.id}
                 className="grid grid-cols-3 gap-4 px-6 py-4 text-sm"
               >
-                <span className="text-white">{athlete.name}</span>
-                <div className="text-xs text-white/60">
+                <span className="text-ink">{athlete.name}</span>
+                <div className="text-sm text-muted">
                   {athlete.summary}
                 </div>
-                <div className="flex items-center gap-3 text-xs uppercase tracking-wider">
+                <div className="flex items-center gap-3 text-sm">
                   <Link
-                    className="text-yellow-300 hover:text-yellow-200"
+                    className="text-accent transition hover:text-accent-soft"
                     href={`/scout/athlete/${encodeURIComponent(athlete.id)}`}
                   >
-                    View Profile
+                    View profile
                   </Link>
-                  <span className="text-white/30">/</span>
+                  <span className="text-faint">/</span>
                   <button
-                    className="text-yellow-300 hover:text-yellow-200"
+                    className="text-accent transition hover:text-accent-soft"
                     type="button"
                   >
-                    CONTACT
+                    Contact
                   </button>
                 </div>
               </div>
             ))
           ) : status === "done" ? (
-            <div className="px-6 py-6 text-sm text-white/60">
+            <div className="px-6 py-6 text-sm text-muted">
               No matches found with the current filters.
             </div>
           ) : (
-            <div className="px-6 py-6 text-sm text-white/60">
+            <div className="px-6 py-6 text-sm text-muted">
               Results will appear here after you search.
             </div>
           )}
         </div>
       </div>
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+      <div className="rounded-2xl border border-line bg-surface p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-display text-lg">Actively Recruiting</h3>
+          <h3 className="font-display text-lg font-semibold">
+            Actively recruiting
+          </h3>
         </div>
-        <div className="mt-4 grid gap-3 text-sm text-white/70">
+        <div className="mt-4 grid gap-3 text-sm text-muted">
           {savedSearches.length ? (
             savedSearches.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3"
               >
                 <span>{item.query}</span>
                 <button
-                  className="text-xs font-semibold uppercase tracking-wider text-yellow-300"
+                  className="text-sm font-medium text-accent transition hover:text-accent-soft"
                   type="button"
                   onClick={() => handleRemoveSearch(item)}
                 >
@@ -321,7 +325,7 @@ export default function ScoutSearchPage() {
               </div>
             ))
           ) : (
-            <div className="text-sm text-white/50">
+            <div className="text-sm text-faint">
               No active searches yet.
             </div>
           )}

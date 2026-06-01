@@ -13,33 +13,33 @@ export default function ScoutResultsPage() {
       title="Scout Results"
       subtitle="AI-ranked athletes that match your query."
       actions={
-        <button className="rounded-full bg-yellow-400 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-black">
+        <button className="rounded-xl bg-accent px-5 py-2 text-sm font-medium text-on-accent transition hover:bg-accent-soft">
           Save this search
         </button>
       }
     >
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-        <div className="grid grid-cols-4 gap-4 border-b border-white/10 px-6 py-4 text-xs uppercase tracking-wider text-white/60">
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="grid grid-cols-4 gap-4 border-b border-line px-6 py-4 text-sm font-medium text-faint">
           <span>Athlete</span>
           <span>Position</span>
-          <span>AI Grade</span>
-          <span>Top Trait</span>
+          <span>AI grade</span>
+          <span>Top trait</span>
         </div>
-        <div className="divide-y divide-white/10">
+        <div className="divide-y divide-line">
           {sampleAthletes.map((athlete) => (
             <div
               key={athlete.name}
               className="grid grid-cols-4 gap-4 px-6 py-4 text-sm"
             >
               <Link
-                className="text-white hover:text-yellow-300"
+                className="text-ink transition hover:text-accent"
                 href={`/scout/athlete/${encodeURIComponent(athlete.name)}`}
               >
                 {athlete.name}
               </Link>
-              <span className="text-white/70">{athlete.position}</span>
-              <span className="text-white/70">{athlete.grade}</span>
-              <span className="text-white/70">{athlete.trait}</span>
+              <span className="text-muted">{athlete.position}</span>
+              <span className="text-muted">{athlete.grade}</span>
+              <span className="text-muted">{athlete.trait}</span>
             </div>
           ))}
         </div>

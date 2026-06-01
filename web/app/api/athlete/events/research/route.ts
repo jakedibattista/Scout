@@ -1,5 +1,8 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { buildAndStoreResearchEvents } from "@/lib/athleteResearch";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +13,12 @@ export async function POST(request: Request) {
         { ok: false, error: "Missing athleteId." },
         { status: 400 }
       );
+    }
+
+    const session = await getSession();
+    if (!session) return unauthorized();
+    if (session.role !== "scout" && session.username !== athleteId) {
+      return forbidden();
     }
 
     const profileSnap = await adminDb

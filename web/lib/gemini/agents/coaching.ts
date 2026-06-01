@@ -1,8 +1,8 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
 import { withRetry } from "@/lib/gemini/retry";
-
-const defaultModel = "gemini-3-flash-preview";
+import { GEMINI_MODEL } from "@/lib/gemini/config";
+import { parseGeminiJson } from "@/lib/gemini/parseJson";
 
 type CoachingInput = {
   athleteProfile: Record<string, unknown>;
@@ -51,33 +51,20 @@ Rules:
 }
 
 function parseOutput(raw: string): CoachingOutput {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-  try {
-    const parsed = JSON.parse(candidate) as CoachingOutput;
-    return {
-      summary: parsed.summary ?? trimmed,
-      focusAreas: Array.isArray(parsed.focusAreas) ? parsed.focusAreas : [],
-      nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
-      trend: parsed.trend ?? "unknown",
-    };
-  } catch {
-    return {
-      summary: trimmed,
-      focusAreas: [],
-      nextSteps: [],
-      trend: "unknown",
-    };
-  }
+  const parsed = parseGeminiJson<Partial<CoachingOutput>>(raw, {});
+  return {
+    summary: parsed.summary ?? raw.trim(),
+    focusAreas: Array.isArray(parsed.focusAreas) ? parsed.focusAreas : [],
+    nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
+    trend: parsed.trend ?? "unknown",
+  };
 }
 
 export async function generateCoachingGuidance(input: CoachingInput) {
   const ai = getGeminiClient();
   const response = await withRetry("Gemini coaching", () =>
     ai.models.generateContent({
-      model: process.env.GEMINI_MODEL ?? defaultModel,
+      model: GEMINI_MODEL,
       contents: createUserContent([buildPrompt(input)]),
     })
   );

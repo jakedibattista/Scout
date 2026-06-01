@@ -1,8 +1,9 @@
 import { adminStorage } from "@/lib/firebaseAdmin";
+import { isDrillType } from "@/lib/drills";
+import { SIGNED_URL_TTL_MS } from "@/lib/config";
+import { getSession, unauthorized } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
-
-const allowedDrills = new Set(["wall_ball", "dash_20", "shuttle_5_10_5"]);
 
 function sanitizeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -24,13 +25,17 @@ function formatUploadError(error: unknown) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return unauthorized();
+
     const payload = await request.json();
     const drillType = String(payload?.drillType ?? "");
     const fileName = String(payload?.fileName ?? "");
     const contentType = String(payload?.contentType ?? "");
-    const athleteId = String(payload?.athleteId ?? "unknown");
+    // Identity comes from the session, never from the client body.
+    const athleteId = session.username;
 
-    if (!allowedDrills.has(drillType)) {
+    if (!isDrillType(drillType)) {
       return Response.json(
         { ok: false, error: "Invalid drill type." },
         { status: 400 }
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     const safeFileName = sanitizeSegment(fileName);
-    const safeAthleteId = sanitizeSegment(athleteId || "unknown");
+    const safeAthleteId = sanitizeSegment(athleteId);
     const filePath = `athletes/${safeAthleteId}/videos/${drillType}/${Date.now()}-${safeFileName}`;
 
     const bucket = adminStorage.bucket();
@@ -56,7 +61,7 @@ export async function POST(request: Request) {
         : "application/octet-stream";
     const [uploadUrl] = await fileRef.getSignedUrl({
       action: "write",
-      expires: Date.now() + 15 * 60 * 1000,
+      expires: Date.now() + SIGNED_URL_TTL_MS,
       contentType: resolvedContentType,
     });
 

@@ -9,11 +9,9 @@ import path from "node:path";
 import { adminStorage } from "@/lib/firebaseAdmin";
 import { getGeminiClient } from "@/lib/gemini/client";
 import { withRetry } from "@/lib/gemini/retry";
-
-const defaultModel = "gemini-3-flash-preview";
-const fallbackModel = "gemini-3-pro-preview";
-
-type DrillType = "wall_ball" | "dash_20" | "shuttle_5_10_5";
+import { GEMINI_MODEL } from "@/lib/gemini/config";
+import { parseGeminiJson } from "@/lib/gemini/parseJson";
+import type { DrillType } from "@/lib/drills";
 
 type DrillAnalysis = {
   notes: string;
@@ -52,31 +50,27 @@ Return ONLY valid JSON.`;
 }
 
 function parseAnalysis(raw: string): DrillAnalysis {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-  try {
-    const parsed = JSON.parse(candidate);
-    return {
-      notes: typeof parsed.notes === "string" ? parsed.notes : raw,
-      metrics:
-        parsed.metrics && typeof parsed.metrics === "object"
-          ? parsed.metrics
-          : {},
-    };
-  } catch (error) {
-    return { notes: trimmed, metrics: {} };
-  }
+  const parsed = parseGeminiJson<{
+    notes?: unknown;
+    metrics?: unknown;
+  }>(raw, {});
+  return {
+    notes: typeof parsed.notes === "string" ? parsed.notes : raw.trim(),
+    metrics:
+      parsed.metrics && typeof parsed.metrics === "object"
+        ? (parsed.metrics as Record<string, string | number>)
+        : {},
+  };
 }
 
 async function waitForFileActive(
   fileName: string,
   maxWaitMs = 90_000,
-  pollIntervalMs = 2_000
+  initialPollMs = 1_000
 ) {
   const ai = getGeminiClient();
   const start = Date.now();
+  let pollMs = initialPollMs;
 
   while (true) {
     const file = await withRetry("Gemini file status", () =>
@@ -98,7 +92,8 @@ async function waitForFileActive(
       );
     }
 
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    pollMs = Math.min(pollMs * 1.5, 8_000); // exponential backoff, capped at 8s
   }
 }
 
@@ -108,11 +103,10 @@ export async function analyzeDrillVideo(input: {
   drillType: DrillType;
 }) {
   const ai = getGeminiClient();
-  const model =
-    input.drillType === "wall_ball" ? fallbackModel : defaultModel;
   const bucket = adminStorage.bucket();
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "scout-video-"));
   const tmpPath = path.join(tmpDir, input.fileName);
+  let uploadedFileName: string | undefined;
 
   try {
     await withRetry("Download from storage", () =>
@@ -128,6 +122,7 @@ export async function analyzeDrillVideo(input: {
     if (!file.name) {
       throw new Error("Gemini upload did not return a file name.");
     }
+    uploadedFileName = file.name;
     const activeFile = await waitForFileActive(file.name);
     if (!activeFile.uri) {
       throw new Error("Gemini upload did not return a file URI.");
@@ -136,7 +131,7 @@ export async function analyzeDrillVideo(input: {
 
     const response = await withRetry("Gemini generateContent", () =>
       ai.models.generateContent({
-        model: process.env.GEMINI_MODEL ?? model,
+        model: GEMINI_MODEL,
         contents: createUserContent([
           createPartFromUri(
             fileUri,
@@ -150,6 +145,12 @@ export async function analyzeDrillVideo(input: {
     const text = response.text ?? "";
     return parseAnalysis(text);
   } finally {
+    // Clean up the local temp file and the uploaded Gemini file (48h retention).
     await fs.rm(tmpDir, { recursive: true, force: true });
+    if (uploadedFileName) {
+      await ai.files
+        .delete({ name: uploadedFileName })
+        .catch(() => undefined);
+    }
   }
 }

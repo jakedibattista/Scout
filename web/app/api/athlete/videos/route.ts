@@ -1,4 +1,6 @@
 import { adminDb, adminFieldValue, adminStorage } from "@/lib/firebaseAdmin";
+import { SIGNED_URL_TTL_MS, ANALYSIS_STALE_MS } from "@/lib/config";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -12,6 +14,13 @@ export async function GET(request: Request) {
       { ok: false, error: "athleteId is required." },
       { status: 400 }
     );
+  }
+
+  const session = await getSession();
+  if (!session) return unauthorized();
+  // Athletes see their own videos; scouts may view any athlete's videos.
+  if (session.role !== "scout" && session.username !== athleteId) {
+    return forbidden();
   }
 
   try {
@@ -30,7 +39,7 @@ export async function GET(request: Request) {
           try {
             const [signedUrl] = await bucket.file(filePath).getSignedUrl({
               action: "read",
-              expires: Date.now() + 15 * 60 * 1000,
+              expires: Date.now() + SIGNED_URL_TTL_MS,
             });
             viewUrl = signedUrl;
           } catch (error) {
@@ -54,7 +63,7 @@ export async function GET(request: Request) {
         if (
           data.analysisStatus === "running" &&
           analysisUpdatedAt &&
-          Date.now() - analysisUpdatedAt.getTime() > 15 * 60 * 1000
+          Date.now() - analysisUpdatedAt.getTime() > ANALYSIS_STALE_MS
         ) {
           await adminDb
             .collection("videos")

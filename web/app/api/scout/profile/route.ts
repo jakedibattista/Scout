@@ -1,81 +1,39 @@
-import { createHash } from "crypto";
-import { adminDb, adminFieldValue } from "@/lib/firebaseAdmin";
+import { upsertProfile } from "@/lib/auth/profileUpsert";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  let payload: Record<string, unknown>;
   try {
-    let payload: Record<string, unknown>;
-    try {
-      payload = (await request.json()) as Record<string, unknown>;
-    } catch {
-      return Response.json(
-        { ok: false, error: "Invalid JSON payload." },
-        { status: 400 }
-      );
-    }
-
-    const { username, password, ...profile } = payload;
-
-    if (!username) {
-      return Response.json(
-        { ok: false, error: "Missing username." },
-        { status: 400 }
-      );
-    }
-
-    const userRef = adminDb.collection("users").doc(String(username));
-    const existingUser = await userRef.get();
-    if (!password && !existingUser.exists) {
-      return Response.json(
-        { ok: false, error: "Password required to create account." },
-        { status: 400 }
-      );
-    }
-
-    let passwordHash: string | null = null;
-    if (password) {
-      passwordHash = createHash("sha256")
-        .update(String(password))
-        .digest("hex");
-      if (existingUser.exists) {
-        const existingData = existingUser.data();
-        if (existingData?.passwordHash !== passwordHash) {
-          return Response.json(
-            { ok: false, error: "This username already exists. If this is your account, go to the login page and use your original password." },
-            { status: 409 }
-          );
-        }
-      }
-    }
-
-    await userRef.set(
-      {
-        username: String(username),
-        email: String(profile.email ?? ""),
-        role: "scout",
-        ...(passwordHash ? { passwordHash } : {}),
-        createdAt: adminFieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    await adminDb
-      .collection("scoutProfiles")
-      .doc(String(username))
-      .set(
-        {
-          ...profile,
-          username: String(username),
-          updatedAt: adminFieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-    return Response.json({ ok: true });
-  } catch (error) {
-    console.error("POST /api/scout/profile failed", error);
+    payload = await request.json();
+  } catch {
     return Response.json(
       { ok: false, error: "Unable to save scout profile right now." },
       { status: 500 }
     );
   }
+
+  const { username, password, ...profile } = payload as {
+    username?: string;
+    password?: string;
+    [key: string]: unknown;
+  };
+
+  const result = await upsertProfile({
+    role: "scout",
+    username: String(username ?? ""),
+    password: password ? String(password) : undefined,
+    email: profile.email ? String(profile.email) : "",
+    profile,
+    profileCollection: "scoutProfiles",
+  });
+
+  if (!result.ok) {
+    return Response.json(
+      { ok: false, error: result.error },
+      { status: result.status }
+    );
+  }
+
+  return Response.json({ ok: true });
 }

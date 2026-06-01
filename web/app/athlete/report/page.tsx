@@ -426,31 +426,26 @@ export default function AthleteReportPage() {
       }));
 
       if (completeData?.videoId) {
+        // The analyze endpoint runs synchronously and returns when done, so we
+        // refresh once afterward instead of polling for status.
         const analyzeResponse = await fetch("/api/athlete/video/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ videoId: completeData.videoId }),
         });
-        if (!analyzeResponse.ok) {
-          setDrillMessage((prev) => ({
-            ...prev,
-            [drillKey]: "Analysis failed.",
-          }));
+        let analyzeOk = analyzeResponse.ok;
+        try {
+          const analyzeData = await analyzeResponse.json();
+          if (analyzeData?.ok === false) analyzeOk = false;
+        } catch {
+          /* ignore parse errors */
         }
+        setDrillMessage((prev) => ({
+          ...prev,
+          [drillKey]: analyzeOk ? "Analysis complete." : "Analysis failed.",
+        }));
       }
       await loadVideos(true);
-
-      let attempts = 0;
-      const maxAttempts = 40;
-      while (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-        const latestVideos = await loadVideos(false);
-        const latest = latestVideos.find((video) => video.drillType === drillKey);
-        if (latest?.analysisStatus === "ready" || latest?.analysisStatus === "failed") {
-          break;
-        }
-        attempts += 1;
-      }
       await loadReports();
     } catch (error) {
       setDrillStatus((prev) => ({ ...prev, [drillKey]: "error" }));
@@ -600,13 +595,13 @@ export default function AthleteReportPage() {
       title="Athlete Profile"
       subtitle="Your living profile with AI scouting report, research, and coaching."
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
         <div className="flex flex-wrap gap-3">
           <button
-            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider ${
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
               activeTab === "ai"
-                ? "bg-white text-black"
-                : "border border-white/20 text-white"
+                ? "bg-accent text-on-accent"
+                : "border border-line-strong text-ink hover:border-ink"
             }`}
             type="button"
             onClick={() => setActiveTab("ai")}
@@ -614,10 +609,10 @@ export default function AthleteReportPage() {
             Scouting Evaluation
           </button>
           <button
-            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider ${
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
               activeTab === "about"
-                ? "bg-white text-black"
-                : "border border-white/20 text-white"
+                ? "bg-accent text-on-accent"
+                : "border border-line-strong text-ink hover:border-ink"
             }`}
             type="button"
             onClick={() => setActiveTab("about")}
@@ -626,7 +621,7 @@ export default function AthleteReportPage() {
           </button>
         </div>
         <Link
-          className="rounded-full border border-white/20 px-4 py-2 text-xs uppercase tracking-wider text-white/70 hover:text-white"
+          className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-ink"
           href="/"
         >
           Log out
@@ -635,7 +630,7 @@ export default function AthleteReportPage() {
       {activeTab === "ai" && (message || aboutSaving) ? (
         <p
           className={`text-sm ${
-            status === "error" ? "text-red-300" : "text-white/70"
+            status === "error" ? "text-danger" : "text-muted"
           }`}
         >
           {aboutSaving ? "Updating scouting report and coaching guidance..." : message}
@@ -643,37 +638,37 @@ export default function AthleteReportPage() {
       ) : null}
       {activeTab === "ai" ? (
         <div className="flex flex-col gap-6">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Scouting report</h2>
-            <p className="mt-3 text-sm text-white/70">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Scouting report</h2>
+            <p className="mt-3 text-sm text-muted">
               {report.summary ??
                 "Enter competitions and combine drills to get your scouting report."}
             </p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
+              <div className="rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted">
                 Strengths: {report.strengths ?? "Speed, quick decision-making"}
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
+              <div className="rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted">
                 Weaknesses: {report.weaknesses ?? "Needs more consistency."}
               </div>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Coaching guidance</h2>
-            <p className="mt-3 text-sm text-white/70">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Coaching guidance</h2>
+            <p className="mt-3 text-sm text-muted">
               {report.coaching ??
                 "Focus drills and next steps from a coach perspective."}
             </p>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Competitions and Results</h2>
-            <p className="mt-3 text-sm text-white/70">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Competitions and Results</h2>
+            <p className="mt-3 text-sm text-muted">
               {report.research ??
                 "Auto-generated from athlete profile data and sport-specific sources."}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button
-                className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                 type="button"
                 onClick={handleRunResearch}
                 disabled={researchStatus === "loading"}
@@ -684,21 +679,21 @@ export default function AthleteReportPage() {
                 <span
                   className={`text-xs ${
                     researchStatus === "error"
-                      ? "text-red-300"
-                      : "text-white/60"
+                      ? "text-danger"
+                      : "text-muted"
                   }`}
                 >
                   {researchMessage}
                 </span>
               ) : null}
             </div>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70">
-              <div className="text-xs uppercase tracking-wider text-white/50">
+            <div className="mt-4 rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted">
+              <div className="text-sm font-medium text-faint">
                 Add or update a competition entry
               </div>
               <div className="mt-3 grid gap-3 md:grid-cols-3">
                 <input
-                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                   placeholder="Event name"
                   value={eventForm.eventName}
                   onChange={(event) =>
@@ -709,7 +704,7 @@ export default function AthleteReportPage() {
                   }
                 />
                 <input
-                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white"
+                  className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink"
                   placeholder="Event link"
                   value={eventForm.url}
                   onChange={(event) =>
@@ -720,7 +715,7 @@ export default function AthleteReportPage() {
                   }
                 />
                 <input
-                  className="rounded-full border border-white/10 bg-black/60 px-4 py-2 text-sm text-white md:col-span-3"
+                  className="rounded-xl border border-line bg-surface px-4 py-2 text-sm text-ink md:col-span-3"
                   placeholder="Summary"
                   value={eventForm.summary}
                   onChange={(event) =>
@@ -733,7 +728,7 @@ export default function AthleteReportPage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <button
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
+                  className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                   type="button"
                   onClick={editingEventId ? handleSaveEvent : handleAddEventLink}
                 >
@@ -741,7 +736,7 @@ export default function AthleteReportPage() {
                 </button>
                 {editingEventId ? (
                   <button
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/70 hover:text-white"
+                    className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-muted transition hover:text-ink"
                     type="button"
                     onClick={() => {
                       setEditingEventId(null);
@@ -753,8 +748,8 @@ export default function AthleteReportPage() {
                 ) : null}
               </div>
             </div>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-              <div className="grid grid-cols-12 gap-4 border-b border-white/10 px-4 py-3 text-xs uppercase tracking-wider text-white/50">
+            <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-surface-2">
+              <div className="grid grid-cols-12 gap-4 border-b border-line px-4 py-3 text-sm font-medium text-faint">
                 <span className="col-span-3">Event name</span>
                 <span className="col-span-4">Event link</span>
                 <span className="col-span-3">Summary</span>
@@ -764,13 +759,13 @@ export default function AthleteReportPage() {
                 events.map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-12 gap-4 px-4 py-3 text-xs text-white/70"
+                    className="grid grid-cols-12 gap-4 px-4 py-3 text-sm text-muted"
                   >
                     <div className="col-span-3 flex items-start">
-                      <span className="text-white">{item.eventName}</span>
+                      <span className="text-ink">{item.eventName}</span>
                     </div>
                     <a
-                      className="col-span-4 break-words text-yellow-300 hover:text-yellow-200"
+                      className="col-span-4 break-words text-accent transition hover:text-accent-soft"
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
@@ -782,7 +777,7 @@ export default function AthleteReportPage() {
                     </span>
                     <div className="col-span-2 flex flex-col items-end gap-2">
                       <button
-                        className="text-xs uppercase tracking-wider text-yellow-300 hover:text-yellow-200"
+                        className="text-sm font-medium text-accent transition hover:text-accent-soft"
                         type="button"
                         onClick={() => {
                           setEditingEventId(item.id);
@@ -796,7 +791,7 @@ export default function AthleteReportPage() {
                         Edit
                       </button>
                       <button
-                        className="text-xs uppercase tracking-wider text-white/60 hover:text-white"
+                        className="text-sm font-medium text-muted transition hover:text-ink"
                         type="button"
                         onClick={() => handleDeleteEvent(item.id)}
                       >
@@ -806,15 +801,15 @@ export default function AthleteReportPage() {
                   </div>
                 ))
               ) : (
-                <div className="px-4 py-4 text-xs text-white/50">
+                <div className="px-4 py-4 text-sm text-faint">
                   No public events found yet. Add one below or run research.
                 </div>
               )}
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Combine drills</h2>
-            <p className="mt-3 text-sm text-white/70">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Combine drills</h2>
+            <p className="mt-3 text-sm text-muted">
               Review or redo your three drills to refresh your report.
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -875,30 +870,30 @@ export default function AthleteReportPage() {
                 const shuttleGrade =
                   key === "shuttle_5_10_5"
                     ? latest?.analysisStatus === "ready" && totalTimeValue === null
-                      ? { label: "Unavailable", color: "text-white/40" }
+                      ? { label: "Unavailable", color: "text-faint" }
                       : getShuttleGrade(totalTimeValue)
                     : null;
                 const dashGrade =
                   key === "dash_20"
                     ? latest?.analysisStatus === "ready" && totalTimeValue === null
-                      ? { label: "Unavailable", color: "text-white/40" }
+                      ? { label: "Unavailable", color: "text-faint" }
                       : getDashGrade(totalTimeValue)
                     : null;
                 const wallBallGrade =
                   key === "wall_ball"
                     ? latest?.analysisStatus === "ready" && repsValue === null
-                      ? { label: "Unavailable", color: "text-white/40" }
+                      ? { label: "Unavailable", color: "text-faint" }
                       : getWallBallGrade(repsValue)
                     : null;
 
                 return (
                   <div
                     key={key}
-                    className="rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/70"
+                    className="rounded-2xl border border-line bg-surface-2 p-4 text-sm text-muted"
                   >
-                    <div className="flex items-center justify-between text-sm text-white">
+                    <div className="flex items-center justify-between text-sm text-ink">
                       <span>{drillLabels[key] ?? key}</span>
-                      <label className="rounded-full border border-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white cursor-pointer">
+                      <label className="rounded-lg border border-line-strong px-3 py-1 text-xs font-medium text-ink transition hover:border-ink cursor-pointer">
                         {uploaded ? "Redo" : "Upload"}
                         <input
                           className="hidden"
@@ -911,11 +906,11 @@ export default function AthleteReportPage() {
                       </label>
                     </div>
                     {drillStatus[key] === "uploading" ? (
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-sm text-faint">
                         Uploading...
                       </div>
                     ) : uploaded ? (
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-sm text-faint">
                         {latest?.analysisStatus === "failed"
                           ? "Analysis failed."
                           : latest?.analysisStatus === "ready"
@@ -925,17 +920,17 @@ export default function AthleteReportPage() {
                               : "Running analysis..."}
                       </div>
                     ) : drillMessage[key] ? (
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-sm text-faint">
                         {drillMessage[key]}
                       </div>
                     ) : null}
                     {key === "shuttle_5_10_5" ? (
                       <div className="mt-3 flex items-center gap-3 text-xs">
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Speed: {formatSeconds(totalTimeValue)}
                         </div>
                         <div
-                          className={`rounded-full border border-white/10 px-3 py-1 ${shuttleGrade?.color ?? "text-white/50"}`}
+                          className={`rounded-lg border border-line px-3 py-1 ${shuttleGrade?.color ?? "text-faint"}`}
                         >
                           {shuttleGrade?.label ?? "Pending"}
                         </div>
@@ -943,11 +938,11 @@ export default function AthleteReportPage() {
                     ) : null}
                     {key === "dash_20" ? (
                       <div className="mt-3 flex items-center gap-3 text-xs">
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Speed: {formatSeconds(totalTimeValue)}
                         </div>
                         <div
-                          className={`rounded-full border border-white/10 px-3 py-1 ${dashGrade?.color ?? "text-white/50"}`}
+                          className={`rounded-lg border border-line px-3 py-1 ${dashGrade?.color ?? "text-faint"}`}
                         >
                           {dashGrade?.label ?? "Pending"}
                         </div>
@@ -955,10 +950,10 @@ export default function AthleteReportPage() {
                     ) : null}
                     {key === "wall_ball" ? (
                       <div className="mt-3 flex items-center gap-3 text-xs">
-                        <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                        <div className="rounded-lg border border-line px-3 py-1 text-muted">
                           Reps (60s): {formatCount(repsValue)}
                         </div>
-                    <div className="rounded-full border border-white/10 px-3 py-1 text-white/70">
+                    <div className="rounded-lg border border-line px-3 py-1 text-muted">
                       Max streak:{" "}
                       {formatCount(
                         parseSeconds(
@@ -972,20 +967,20 @@ export default function AthleteReportPage() {
                       )}
                     </div>
                         <div
-                          className={`rounded-full border border-white/10 px-3 py-1 ${wallBallGrade?.color ?? "text-white/50"}`}
+                          className={`rounded-lg border border-line px-3 py-1 ${wallBallGrade?.color ?? "text-faint"}`}
                         >
                           {wallBallGrade?.label ?? "Pending"}
                         </div>
                       </div>
                     ) : null}
                     {uploaded ? (
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-sm text-faint">
                         Date: {dateLabel}
                       </div>
                     ) : null}
                     {uploaded && latest?.viewUrl ? (
                       <div className="mt-3">
-                        <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                        <div className="aspect-video w-full overflow-hidden rounded-xl border border-line bg-bg">
                           <video
                             className="h-full w-full object-cover"
                             controls
@@ -995,7 +990,7 @@ export default function AthleteReportPage() {
                         </div>
                       </div>
                     ) : null}
-                    <div className="mt-3 text-xs text-white/60">
+                    <div className="mt-3 text-sm text-muted">
                       {uploaded
                         ? latest?.analysisStatus === "failed"
                           ? latest.analysisError ||
@@ -1012,13 +1007,13 @@ export default function AthleteReportPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-2xl border border-line bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-display text-xl">About me</h2>
+              <h2 className="font-display text-xl font-semibold">About me</h2>
               {isEditingAbout ? (
-                <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wider">
+                <div className="flex flex-wrap gap-2 text-sm">
                   <button
-                    className="rounded-full bg-yellow-400 px-4 py-2 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-70"
+                    className="rounded-xl bg-accent px-4 py-2 font-medium text-on-accent transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-70"
                     type="button"
                     onClick={handleAboutSave}
                     disabled={aboutSaving}
@@ -1026,7 +1021,7 @@ export default function AthleteReportPage() {
                     {aboutSaving ? "Saving..." : "Save"}
                   </button>
                   <button
-                    className="rounded-full border border-white/20 px-4 py-2 text-white/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-xl border border-line px-4 py-2 text-muted transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                     type="button"
                     onClick={handleAboutCancel}
                     disabled={aboutSaving}
@@ -1036,7 +1031,7 @@ export default function AthleteReportPage() {
                 </div>
               ) : (
                 <button
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white"
+                  className="rounded-xl border border-line-strong px-4 py-2 text-sm font-medium text-ink transition hover:border-ink"
                   type="button"
                   onClick={() => {
                     setIsEditingAbout(true);
@@ -1048,16 +1043,16 @@ export default function AthleteReportPage() {
               )}
             </div>
             {aboutMessage ? (
-              <p className="mt-2 text-sm text-white/70">{aboutMessage}</p>
+              <p className="mt-2 text-sm text-muted">{aboutMessage}</p>
             ) : null}
-            <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
+            <div className="mt-4 grid gap-4 text-sm text-muted md:grid-cols-2">
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Name
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="name"
                     value={aboutForm.name}
                     onChange={handleAboutChange}
@@ -1067,13 +1062,13 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Sport / Position
                 </div>
                 {isEditingAbout ? (
                   <div className="mt-2 flex flex-col gap-3">
                     <select
-                      className="rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                      className="rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                       name="sport"
                       value={aboutForm.sport}
                       onChange={(event) =>
@@ -1094,7 +1089,7 @@ export default function AthleteReportPage() {
                       </option>
                     </select>
                     <select
-                      className="rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                      className="rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                       name="position"
                       value={aboutForm.position || availablePositions[0] || ""}
                       onChange={(event) =>
@@ -1120,12 +1115,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Graduation year
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="gradYear"
                     value={aboutForm.gradYear}
                     onChange={handleAboutChange}
@@ -1135,12 +1130,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Gender
                 </div>
                 {isEditingAbout ? (
                   <select
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="gender"
                     value={aboutForm.gender}
                     onChange={(event) =>
@@ -1158,17 +1153,17 @@ export default function AthleteReportPage() {
                     {aboutForm.gender
                       ? aboutForm.gender.charAt(0).toUpperCase() +
                         aboutForm.gender.slice(1)
-                      : "--"}
+                      : "Not set"}
                   </div>
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Location
                 </div>
                 {isEditingAbout ? (
                   <select
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="state"
                     value={aboutForm.state}
                     onChange={(event) =>
@@ -1240,19 +1235,19 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Height / Weight
                 </div>
                 {isEditingAbout ? (
                   <div className="mt-2 flex gap-3">
                     <input
-                      className="w-1/2 rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                      className="w-1/2 rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                       name="height"
                       value={aboutForm.height}
                       onChange={handleAboutChange}
                     />
                     <input
-                      className="w-1/2 rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                      className="w-1/2 rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                       name="weight"
                       value={aboutForm.weight}
                       onChange={handleAboutChange}
@@ -1263,12 +1258,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   High school team
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="highSchoolTeam"
                     value={aboutForm.highSchoolTeam}
                     onChange={handleAboutChange}
@@ -1278,12 +1273,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Goal
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="goal"
                     value={aboutForm.goal}
                     onChange={handleAboutChange}
@@ -1293,12 +1288,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   GPA
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="gpa"
                     value={aboutForm.gpa}
                     onChange={handleAboutChange}
@@ -1308,12 +1303,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Club team
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="clubTeam"
                     value={aboutForm.clubTeam}
                     onChange={handleAboutChange}
@@ -1323,12 +1318,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Highlight tape
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="highlightTapeUrl"
                     value={aboutForm.highlightTapeUrl}
                     onChange={handleAboutChange}
@@ -1339,16 +1334,16 @@ export default function AthleteReportPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Account</h2>
-            <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Account</h2>
+            <div className="mt-4 grid gap-4 text-sm text-muted md:grid-cols-2">
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Username
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="username"
                     value={aboutForm.username}
                     onChange={handleAboutChange}
@@ -1358,12 +1353,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Email
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="email"
                     value={aboutForm.email}
                     onChange={handleAboutChange}
@@ -1374,9 +1369,9 @@ export default function AthleteReportPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Preferences</h2>
-            <div className="mt-4 grid gap-4 text-sm text-white/70">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Preferences</h2>
+            <div className="mt-4 grid gap-4 text-sm text-muted">
               <div>
                 {isEditingAbout ? (
                   <div className="mt-2">
@@ -1394,7 +1389,7 @@ export default function AthleteReportPage() {
                   </div>
                 ) : (
                   <div>
-                    <div className="text-xs uppercase tracking-wider text-white/50">
+                    <div className="text-sm font-medium text-faint">
                       Willing-to-relocate states
                     </div>
                     <div className="mt-2">
@@ -1407,16 +1402,16 @@ export default function AthleteReportPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h2 className="font-display text-xl">Socials</h2>
-            <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-display text-xl font-semibold">Socials</h2>
+            <div className="mt-4 grid gap-4 text-sm text-muted md:grid-cols-2">
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   Instagram
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="instagram"
                     value={aboutForm.instagram}
                     onChange={handleAboutChange}
@@ -1426,12 +1421,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   X
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="x"
                     value={aboutForm.x}
                     onChange={handleAboutChange}
@@ -1441,12 +1436,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   TikTok
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="tiktok"
                     value={aboutForm.tiktok}
                     onChange={handleAboutChange}
@@ -1456,12 +1451,12 @@ export default function AthleteReportPage() {
                 )}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wider text-white/50">
+                <div className="text-sm font-medium text-faint">
                   YouTube
                 </div>
                 {isEditingAbout ? (
                   <input
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-white"
+                    className="mt-2 w-full rounded-xl border border-line bg-surface px-4 py-2 text-ink"
                     name="youtube"
                     value={aboutForm.youtube}
                     onChange={handleAboutChange}
@@ -1474,7 +1469,7 @@ export default function AthleteReportPage() {
           </div>
         </div>
       )}
-      <p className="text-xs text-white/50">
+      <p className="text-sm text-faint">
         AI reports auto-update when you add new videos or event links.
       </p>
     </PageShell>

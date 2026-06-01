@@ -2,59 +2,62 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#1f1f1f,transparent_55%)]" />
-        <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-yellow-400/20 blur-[120px]" />
-        <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-blue-500/20 blur-[120px]" />
+    <div className="min-h-screen bg-bg text-ink">
+      <main className="mx-auto flex max-w-5xl flex-col gap-20 px-6 pb-24 pt-10">
+        <nav className="flex items-center justify-between">
+          <span className="font-display text-lg font-semibold tracking-tight">
+            Scout
+          </span>
+          <Link
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-muted transition hover:border-line-strong hover:text-ink"
+            href="/login"
+          >
+            Log in
+          </Link>
+        </nav>
 
-        <main className="relative mx-auto flex max-w-6xl flex-col gap-12 px-6 pb-24 pt-12">
-          <nav className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-white/70">
-            <span className="font-display text-base tracking-[0.4em]">Scout</span>
-            <div className="flex items-center gap-4">
-              <span className="hidden text-xs text-white/50 md:inline">
-                Modern scouting, built for 2026
-              </span>
-              <Link
-                className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/80 hover:text-white"
-                href="/login"
-              >
-                Log in
-              </Link>
-            </div>
-          </nav>
+        <section className="flex max-w-3xl flex-col gap-6">
+          <h1 className="font-display text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
+            Recruiting, backed by the tape.
+          </h1>
+          <p className="max-w-2xl text-lg leading-relaxed text-muted">
+            Athletes build a profile with film and AI-generated scouting
+            reports. Scouts search in plain language to find players who fit
+            what they need.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-3">
+            <Link
+              className="rounded-xl bg-accent px-6 py-3 text-sm font-medium text-on-accent transition hover:bg-accent-soft"
+              href="/scout/profile"
+            >
+              I am a scout
+            </Link>
+            <Link
+              className="rounded-xl border border-line-strong px-6 py-3 text-sm font-medium text-ink transition hover:border-ink"
+              href="/athlete/profile"
+            >
+              I am an athlete
+            </Link>
+          </div>
+        </section>
 
-          <section className="flex flex-col gap-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-yellow-300">
-              The future of recruiting
+        <section className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2">
+          <div className="flex flex-col gap-3 bg-surface p-8">
+            <h2 className="text-lg font-semibold">For athletes</h2>
+            <p className="text-muted">
+              Upload drills and game film. Scout turns each clip into measurable
+              metrics and a report you can share with college programs.
             </p>
-            <h1 className="font-display text-4xl font-semibold leading-tight text-white md:text-6xl">
-              Scout the next generation in minutes, not months.
-            </h1>
-            <p className="max-w-2xl text-lg text-white/70">
-              Two workflows. One platform. Athletes build a living profile with
-              AI scouting reports. Scouts run natural language searches to find
-              hidden talent fast.
+          </div>
+          <div className="flex flex-col gap-3 bg-surface p-8">
+            <h2 className="text-lg font-semibold">For scouts</h2>
+            <p className="text-muted">
+              Describe the player you are looking for and review ranked matches
+              with the film and numbers behind every result.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Link
-                className="rounded-full bg-yellow-400 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black transition hover:bg-yellow-300"
-                href="/scout/profile"
-              >
-                I’m a scout
-              </Link>
-              <Link
-                className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:border-white/60"
-                href="/athlete/profile"
-              >
-                I’m an athlete
-              </Link>
-            </div>
-          </section>
-
-          
-        </main>
-      </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { createUserContent } from "@google/genai";
 import { getGeminiClient } from "@/lib/gemini/client";
-
-const defaultModel = "gemini-3-flash-preview";
+import { withRetry, withTimeout } from "@/lib/gemini/retry";
+import { GEMINI_MODEL } from "@/lib/gemini/config";
+import { parseGeminiJson } from "@/lib/gemini/parseJson";
 
 type AthleteResearchInput = {
   athleteName: string;
@@ -41,33 +42,30 @@ Rules:
 }
 
 function parseOutput(raw: string): AthleteResearchEvent[] {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-  try {
-    const parsed = JSON.parse(candidate) as AthleteResearchEvent[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item) => ({
-        eventName: String(item.eventName ?? "").trim(),
-        url: String(item.url ?? "").trim(),
-        summary: String(item.summary ?? "").trim(),
-      }))
-      .filter((item) => item.eventName && item.url);
-  } catch {
-    return [];
-  }
+  const parsed = parseGeminiJson<AthleteResearchEvent[]>(raw, []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map((item) => ({
+      eventName: String(item.eventName ?? "").trim(),
+      url: String(item.url ?? "").trim(),
+      summary: String(item.summary ?? "").trim(),
+    }))
+    .filter((item) => item.eventName && item.url);
 }
 
 export async function generateAthleteResearch(input: AthleteResearchInput) {
   const ai = getGeminiClient();
-  const response = await ai.models.generateContent({
-    model: process.env.GEMINI_MODEL ?? defaultModel,
-    contents: createUserContent([buildPrompt(input)]),
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  const response = await withRetry("Gemini athlete research", () =>
+    withTimeout(
+      ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: createUserContent([buildPrompt(input)]),
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      }),
+      30_000
+    )
+  );
   return parseOutput(response.text ?? "");
 }

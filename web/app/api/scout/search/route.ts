@@ -7,6 +7,9 @@ import {
   parseSeconds,
   shuttleBenchmarks,
 } from "@/lib/metrics";
+import { getSession, unauthorized, forbidden } from "@/lib/auth/session";
+
+export const runtime = "nodejs";
 
 function scoreShuttle(totalSeconds: number | null) {
   if (totalSeconds === null) return 0;
@@ -147,16 +150,13 @@ function passesGradYears(
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) return unauthorized();
+    if (session.role !== "scout") return forbidden();
+
     const payload = await request.json();
     const query = String(payload?.query ?? "").trim();
-    const scoutUsername = String(payload?.scoutUsername ?? "");
-
-    if (!scoutUsername) {
-      return Response.json(
-        { ok: false, error: "Missing scout username." },
-        { status: 400 }
-      );
-    }
+    const scoutUsername = session.username;
 
     const scoutSnap = await adminDb
       .collection("scoutProfiles")
@@ -253,28 +253,52 @@ export async function POST(request: Request) {
         return clubTeam.includes(String(plan.filters.clubTeam).toLowerCase());
       });
 
-    const athleteIds = athletes.map((athlete) => athlete.username ?? athlete.id);
+    const athleteIds = athletes.map((athlete) =>
+      String(athlete.username ?? athlete.id ?? "")
+    );
     const videosByAthlete: Record<
       string,
-      Record<string, { analysisMetrics?: Record<string, string | number> }>
+      Record<
+        string,
+        { analysisMetrics?: Record<string, string | number>; uploadMs: number }
+      >
     > = {};
 
+    // Firestore "in" queries are capped at 10 values; fan them out in parallel.
+    const chunks: string[][] = [];
     for (let i = 0; i < athleteIds.length; i += 10) {
-      const chunk = athleteIds.slice(i, i + 10);
-      if (!chunk.length) continue;
-      const videoSnapshot = await adminDb
-        .collection("videos")
-        .where("athleteId", "in", chunk)
-        .get();
-      for (const doc of videoSnapshot.docs) {
+      const chunk = athleteIds.slice(i, i + 10).filter(Boolean);
+      if (chunk.length) chunks.push(chunk);
+    }
+    const snapshots = await Promise.all(
+      chunks.map((chunk) =>
+        adminDb.collection("videos").where("athleteId", "in", chunk).get()
+      )
+    );
+
+    for (const snapshot of snapshots) {
+      for (const doc of snapshot.docs) {
         const data = doc.data();
-        const athleteId = data.athleteId as string;
+        const athleteId = String(data.athleteId ?? "");
+        const drillType = String(data.drillType ?? "");
+        if (!athleteId || !drillType) continue;
+
+        const uploadMs =
+          typeof data.uploadDate?.toDate === "function"
+            ? data.uploadDate.toDate().getTime()
+            : typeof data.uploadDate?.seconds === "number"
+            ? data.uploadDate.seconds * 1000
+            : 0;
+
         if (!videosByAthlete[athleteId]) {
           videosByAthlete[athleteId] = {};
         }
-        if (!videosByAthlete[athleteId][data.drillType]) {
-          videosByAthlete[athleteId][data.drillType] = {
+        // Keep only the most recent video per drill type.
+        const existing = videosByAthlete[athleteId][drillType];
+        if (!existing || uploadMs >= existing.uploadMs) {
+          videosByAthlete[athleteId][drillType] = {
             analysisMetrics: data.analysisMetrics,
+            uploadMs,
           };
         }
       }
